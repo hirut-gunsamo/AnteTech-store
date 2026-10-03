@@ -14,14 +14,14 @@ import pkg from './package.json' with { type: 'json' }
 // old name, so a saved copy is never a stale picture.
 const PUBLIC_SHELL = [
   '/index.html',
-  '/manifest.webmanifest?v=7',
+  '/manifest.webmanifest?v=9',
   '/brand/at-blue-favicon.ico',
   '/brand/at-blue-favicon-32.png',
   '/brand/at-blue-mark-256.png',
-  '/brand/at-blue-icon-192.png',
-  '/brand/at-blue-icon-512.png',
-  '/brand/at-blue-icon-maskable-512.png',
-  '/brand/at-blue-apple-touch-180.png',
+  '/brand/at-v3-icon-192.png',
+  '/brand/at-v3-icon-512.png',
+  '/brand/at-v3-icon-maskable-512.png',
+  '/brand/at-v3-apple-touch-180.png',
 ]
 
 /**
