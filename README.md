@@ -19,17 +19,17 @@ English and Amharic. Works as an installable app on phones.
 
 You need Node.js, pnpm and PostgreSQL.
 
-1. Install everything:
-
-   ```bash
-   pnpm install
-   ```
-
-2. Create a database, then the two settings files from their examples. Fill in your database user and password, and a long random `JWT_SECRET`:
+1. Create a database, then the two settings files from their examples. Fill in your database user and password, and a long random `JWT_SECRET` (for example from `openssl rand -base64 48`). Do this before installing: the install prepares the database code, which needs `DATABASE_URL`.
 
    ```bash
    cp apps/api/.env.example apps/api/.env
    cp packages/database/.env.example packages/database/.env
+   ```
+
+2. Install everything:
+
+   ```bash
+   pnpm install
    ```
 
 3. Create the tables:
