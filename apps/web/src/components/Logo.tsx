@@ -5,13 +5,16 @@
 // No tile by default, so the mark sits straight on the page. A surface whose
 // own colour would swallow the blue mark (the phone header) hands it a tile
 // through `--logo-tile`.
-export function Logo({ size = 32 }: { size?: number }) {
+//
+// `size` is pixels, or any CSS length (such as a clamp()) so the mark can grow
+// with the screen. Everything inside is proportional to it.
+export function Logo({ size = 32 }: { size?: number | string }) {
   return (
     <span
       style={{
         width: size,
         height: size,
-        borderRadius: size * 0.28,
+        borderRadius: '28%',
         background: 'var(--logo-tile, transparent)',
         display: 'grid',
         placeItems: 'center',
@@ -23,9 +26,7 @@ export function Logo({ size = 32 }: { size?: number }) {
       <img
         src="/brand/at-blue-mark-256.png"
         alt=""
-        width={Math.round(size * 0.92)}
-        height={Math.round(size * 0.92)}
-        style={{ display: 'block', objectFit: 'contain' }}
+        style={{ display: 'block', width: '92%', height: '92%', objectFit: 'contain' }}
       />
     </span>
   )

@@ -342,7 +342,7 @@ export default function AppShell() {
       {/* ---------- Sidebar (desktop) ---------- */}
       <aside className={styles.sidebar}>
         <NavLink to="/dashboard" className={styles.brand}>
-          <Logo size={34} />
+          <Logo size="clamp(42px, 3.4vw, 48px)" />
           <span className={styles.brandName}>
             <span className={styles.brandTop}>{nameParts[0]}</span>
             <span className={styles.brandBottom}>{nameParts[1]}</span>
@@ -458,7 +458,8 @@ export default function AppShell() {
       <div className={styles.main}>
         {/* Mobile header */}
         <header className={styles.mobileHeader}>
-          <Logo size={30} />
+          {/* Big on most phones, a touch smaller on the narrowest so the name still fits. */}
+          <Logo size="clamp(32px, 10.4vw, 42px)" />
           <span className={styles.mobileBrand}>
             <span className={styles.brandTop}>{nameParts[0]}</span>
             <span className={styles.brandBottom}>{nameParts[1]}</span>

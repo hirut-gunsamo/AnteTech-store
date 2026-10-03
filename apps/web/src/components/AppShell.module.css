@@ -680,3 +680,31 @@
     background: var(--surface-2);
   }
 }
+
+/* ---------- Narrowest phones ----------
+   The phone header carries the logo, the name and five round controls. Below
+   380px they no longer all fit at full size, so the controls and the name
+   step down a little and the full name still shows. */
+@media (max-width: 380px) {
+  .mobileHeader {
+    gap: 8px;
+    padding-left: 12px;
+    padding-right: 10px;
+    --bell-size: 32px;
+  }
+
+  .mobileActions {
+    gap: 0;
+    --toggle-size: 32px;
+  }
+
+  .avatarButton {
+    width: 32px;
+    height: 32px;
+  }
+
+  .mobileBrand .brandTop {
+    font-size: 17px;
+  }
+}
+

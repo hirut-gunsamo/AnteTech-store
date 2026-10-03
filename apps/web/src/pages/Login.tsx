@@ -37,7 +37,7 @@ export default function Login() {
     <div className={styles.page}>
       <form className={styles.card} onSubmit={handleSubmit}>
         <div className={styles.brand}>
-          <Logo size={58} />
+          <Logo size="clamp(62px, 17vw, 78px)" />
           <div>
             <h1 className={styles.title}>{t('login.title')}</h1>
             <p className={styles.subtitle}>{t('login.subtitle')}</p>

@@ -5,8 +5,8 @@
 
 .bell {
   position: relative;
-  width: 38px;
-  height: 38px;
+  width: var(--bell-size, 38px);
+  height: var(--bell-size, 38px);
   border-radius: 50%;
   border: none;
   background: transparent;

@@ -159,8 +159,8 @@ self.addEventListener('push', (event) => {
       badge,
       self.registration.showNotification(data.title || 'AnteTech', {
         body: data.body || '',
-        icon: '/brand/at-blue-icon-192.png',
-        badge: '/brand/at-blue-icon-192.png',
+        icon: '/brand/at-v3-icon-192.png',
+        badge: '/brand/at-v3-icon-192.png',
         // One notice per app: a newer one replaces the last instead of piling up.
         tag: 'antetech-work',
         renotify: true,
