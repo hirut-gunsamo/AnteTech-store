@@ -15,6 +15,7 @@ import Approvals from './pages/Approvals'
 import Branches from './pages/Branches'
 import Inventory from './pages/Inventory'
 import Products from './pages/Products'
+import ProfitLoss from './pages/ProfitLoss'
 import ProductTypes from './pages/ProductTypes'
 import Categories from './pages/Categories'
 import Transfers from './pages/Transfers'
@@ -64,6 +65,15 @@ function SalesRoute() {
   return <Sales />
 }
 
+/** Profit and loss is the Owner's alone; a seller lands on their dashboard. */
+function ProfitRoute() {
+  const { user } = useAuth()
+
+  if (user?.role !== 'OWNER') return <Navigate to="/dashboard" replace />
+
+  return <ProfitLoss />
+}
+
 function LoginRoute() {
   const { user, loading } = useAuth()
 
@@ -97,6 +107,7 @@ export default function App() {
             <Route path="/sales" element={<SalesRoute />} />
             <Route path="/requests" element={<Requests />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/profit" element={<ProfitRoute />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/equipment" element={<Equipment />} />
             <Route path="/deductions" element={<Deductions />} />

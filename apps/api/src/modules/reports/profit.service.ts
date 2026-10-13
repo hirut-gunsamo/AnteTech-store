@@ -7,7 +7,7 @@ import { prisma } from "../../plugins/prisma.js";
  *
  * Income is item sales, at the prices actually charged. Costs are what the
  * items sold cost to buy, store expenses, what payroll actually paid (salary
- * and bonus less deductions), commission paid, and office equipment bought.
+ * and bonus less deductions), commission paid, and store equipment bought.
  * Profit is the difference; a negative profit is a loss.
  *
  * Every amount is filed under its day and its store, so the same figures add
@@ -111,7 +111,7 @@ export async function getProfitAndLoss(query: ProfitQuery) {
         where: { receivedAt: within, cost: { not: null }, ...(branch ? { locationId: branch } : {}) },
         select: { cost: true, quantity: true, locationId: true, receivedAt: true },
       }),
-      prisma.stockLocation.findMany({ select: { id: true, name: true, isActive: true } }),
+      prisma.stockLocation.findMany({ select: { id: true, name: true, isActive: true, isMainStock: true } }),
     ]);
 
   // Every amount lands in three places: its store, its day, and (for sales)
@@ -200,9 +200,12 @@ export async function getProfitAndLoss(query: ProfitQuery) {
     branchOrder,
   );
 
-  // Every active store gets an income line, even one that sold nothing, so
-  // a missing store never looks like a missing figure.
+  // Every active selling store gets an income line, even one that sold
+  // nothing, so a missing store never looks like a missing figure. The main
+  // store only holds stock and never sells, so it has no income line; its
+  // costs still show in the store table.
   const incomeBranches = locations
+    .filter((row) => !row.isMainStock || byBranch.get(row.id)?.sales)
     .filter((row) => (branch ? row.id === branch : row.isActive || byBranch.has(row.id)))
     .map((row) => row.id)
     .sort(branchOrder);

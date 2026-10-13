@@ -9,7 +9,7 @@ import type {
 } from "./asset.schema.js";
 
 /**
- * The store's office equipment: what was delivered, what it is, and whether
+ * The store's equipment: what was delivered, what it is, and whether
  * it still works.
  *
  * This is a register, not stock: nothing here is sold, issued or counted at
