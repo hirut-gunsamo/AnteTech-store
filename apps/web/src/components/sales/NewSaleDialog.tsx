@@ -157,16 +157,9 @@ export function NewSaleDialog({
           sku: row.product.sku,
           category: row.product.category,
           categoryId: row.product.categoryId ?? '',
-          // A phone is picked by its brand, an accessory by its category
-          // (Glass, Speaker).
-          typeId:
-            row.product.category === 'SERIALIZED'
-              ? (row.product.type?.parent?.id ?? row.product.type?.id ?? '')
-              : (row.product.categoryId ?? ''),
-          typeName:
-            row.product.category === 'SERIALIZED'
-              ? (row.product.type?.parent?.name ?? row.product.type?.name ?? '—')
-              : (row.product.productCategory?.name ?? '—'),
+          // Picked by type (Glass, Speaker); one without a type by category.
+          typeId: row.product.type?.parent?.id ?? row.product.type?.id ?? row.product.categoryId ?? '',
+          typeName: row.product.type?.parent?.name ?? row.product.type?.name ?? row.product.productCategory?.name ?? '—',
           // Matched on either level, so an older phone filed under a model
           // still shows under its brand.
           typeIds: [row.product.type?.id, row.product.type?.parent?.id, row.product.categoryId].filter(
@@ -333,7 +326,7 @@ export function NewSaleDialog({
               {/* The type first (Speaker, Infinix), then that type's products. */}
               <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
                 <span>
-                  {t('dlg.item', { n: index + 1 })} · {t('sale.group')}
+                  {t('dlg.item', { n: index + 1 })} · {t('prod.typeName')}
                 </span>
                 <select
                   value={line.typeId}

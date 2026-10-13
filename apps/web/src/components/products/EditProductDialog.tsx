@@ -2,15 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react'
 
 import { api } from '../../lib/api'
 import { useT } from '../../lib/i18n'
-import type { ProductRow } from '../../lib/types'
+import type { ProductRow, TypeNode } from '../../lib/types'
 import styles from '../inventory/Panel.module.css'
 
 /**
- * Changes what describes a product: its name, price and details.
+ * Changes what describes a product: its type, model, price and details.
  *
- * The category, type and code are not offered. Stock, requests and sales are
- * all counted against them, so a product that is really something else is
- * deleted and added again instead.
+ * The category is fixed: stock and sales are counted as that kind of goods.
+ * The type can move within it (an old item onto Cover or Glass).
  */
 export function EditProductDialog({
   product,
@@ -30,7 +29,10 @@ export function EditProductDialog({
   const [costPrice, setCostPrice] = useState(
     product.costPrice == null ? '' : String(Number(product.costPrice)),
   )
-  const [phoneModel, setPhoneModel] = useState(product.phoneDetails?.model ?? '')
+  const [brand, setBrand] = useState(product.phoneDetails?.brand ?? '')
+  const startType = product.type?.parentId ?? product.type?.id ?? ''
+  const [typeId, setTypeId] = useState(startType)
+  const [types, setTypes] = useState<TypeNode[]>([])
   const [storage, setStorage] = useState(product.phoneDetails?.storage ?? '')
   const [color, setColor] = useState(product.phoneDetails?.color ?? '')
   const [description, setDescription] = useState(product.description ?? '')
@@ -46,6 +48,18 @@ export function EditProductDialog({
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // This category's types, to move the product to another one.
+  useEffect(() => {
+    const controller = new AbortController()
+    api<{ types: TypeNode[] }>('/api/product-types', { signal: controller.signal })
+      .then((payload) => setTypes(payload.types ?? []))
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [])
+  const typeOptions = types.filter(
+    (node) => node.categoryId === product.categoryId && !node.parentId && (node.isActive || node.id === startType),
+  )
 
   const priceValue = Number(price)
 
@@ -64,6 +78,7 @@ export function EditProductDialog({
     // Blank optional fields are sent as null so a value can be cleared.
     const body = {
       name: name.trim(),
+      ...(typeId && typeId !== startType ? { typeId } : {}),
       description: description.trim() || null,
       // Blank clears the suggested price: sellers enter the real one.
       price: price.trim() === '' ? null : priceValue,
@@ -71,7 +86,9 @@ export function EditProductDialog({
       costPrice: costPrice.trim() === '' ? null : Number(costPrice),
       ...(isPhone
         ? {
-            model: phoneModel.trim() || undefined,
+            // The model is the name.
+            model: name.trim(),
+            brand: brand.trim() || null,
             storage: storage.trim() || null,
             color: color.trim() || null,
           }
@@ -111,12 +128,33 @@ export function EditProductDialog({
           </button>
         </header>
 
-        <form className={styles.body} onSubmit={handleSubmit}>
+        <form
+          className={styles.body}
+          onSubmit={handleSubmit}
+          // Enter in a field does not save: only the button does.
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && (event.target as HTMLElement).tagName === 'INPUT') event.preventDefault()
+          }}
+        >
           <p className={styles.warn}>{t('prod.editNote')}</p>
+
+          {typeOptions.length > 0 ? (
+            <label className={styles.field}>
+              <span>{t('prod.typeName')}</span>
+              <select value={typeId} onChange={(event) => setTypeId(event.target.value)}>
+                {typeId === '' ? <option value="">—</option> : null}
+                {typeOptions.map((node) => (
+                  <option key={node.id} value={node.id}>
+                    {node.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
           <label className={styles.field}>
             <span>
-              {t('prod.name')}<em>{t('common.required')}</em>
+              {t('prod.model')}<em>{t('common.required')}</em>
             </span>
             <input
               value={name}
@@ -162,13 +200,9 @@ export function EditProductDialog({
             <>
               <label className={styles.field}>
                 <span>
-                  {t('prod.model')}<em>{t('prod.optional')}</em>
+                  {t('prod.brand')}<em>{t('prod.optional')}</em>
                 </span>
-                <input
-                  value={phoneModel}
-                  onChange={(event) => setPhoneModel(event.target.value)}
-                  maxLength={80}
-                />
+                <input value={brand} onChange={(event) => setBrand(event.target.value)} maxLength={60} />
               </label>
 
               <label className={styles.field}>
