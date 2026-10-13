@@ -31,7 +31,7 @@ export const en = {
   'nav.settings': 'Settings',
 
   'nav.products': 'Products',
-  'nav.productTypes': 'Brands',
+  'nav.productTypes': 'Types',
   'nav.categories': 'Categories',
   'cat.title': 'Categories',
   'cat.note': 'Step one: the categories your goods are in. Then add types, then products.',
@@ -1408,7 +1408,7 @@ export const am: Record<TranslationKey, string> = {
   'nav.settings': 'ቅንብሮች',
 
   'nav.products': 'ምርቶች',
-  'nav.productTypes': 'ብራንዶች',
+  'nav.productTypes': 'ዓይነቶች',
   'nav.categories': 'ምድቦች',
   'cat.title': 'ምድቦች',
   'cat.note': 'የመጀመሪያው ደረጃ፦ ዕቃዎችዎ ያሉባቸው ምድቦች። ከዚያ ዓይነቶችን፣ ከዚያ ምርቶችን ይጨምሩ።',
