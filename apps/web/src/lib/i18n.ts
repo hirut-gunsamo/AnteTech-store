@@ -1417,9 +1417,11 @@ export const en = {
   'pay.transferPart': 'Transfer part',
   'pay.cashPart': 'Cash part',
   'pay.transferTooBig': 'The transfer must be less than the total. For the full amount, choose Transfer.',
-  'sale.charger': 'Local charger given with the phone',
-  'sale.chargerNone': 'No charger',
-  'sale.chargerNote': '{n} taken from your stock with the phone, at no price.',
+  'sale.charger': 'Add local charger',
+  'sale.chargerNote': 'Tick if the phone goes with a charger. One per phone is taken from your stock and its price is added to the total.',
+  'sale.chargerWhich': 'Charger',
+  'sale.chargerPrice': 'Charger price (each)',
+  'sale.chargerNoneInStore': 'No charger in your store',
   'sale.chargerShort': 'Not enough of this charger in your store.',
 } as const
 
@@ -2804,9 +2806,11 @@ export const am: Record<TranslationKey, string> = {
   'pay.transferPart': 'የዝውውር ክፍል',
   'pay.cashPart': 'የጥሬ ገንዘብ ክፍል',
   'pay.transferTooBig': 'ዝውውሩ ከጠቅላላው ያነሰ መሆን አለበት። ሙሉውን ለመክፈል ዝውውርን ይምረጡ።',
-  'sale.charger': 'ከስልኩ ጋር የተሰጠ ቻርጀር',
-  'sale.chargerNone': 'ቻርጀር የለም',
-  'sale.chargerNote': '{n} ከስልኩ ጋር ከክምችትዎ ይቀነሳል፣ ያለ ዋጋ።',
+  'sale.charger': 'የአገር ውስጥ ቻርጀር ጨምር',
+  'sale.chargerNote': 'ስልኩ ከቻርጀር ጋር ከሆነ ምልክት ያድርጉ። ለእያንዳንዱ ስልክ አንድ ከክምችትዎ ይቀነሳል፣ ዋጋውም ወደ ጠቅላላው ይጨመራል።',
+  'sale.chargerWhich': 'ቻርጀር',
+  'sale.chargerPrice': 'የቻርጀር ዋጋ (አንዱ)',
+  'sale.chargerNoneInStore': 'በሱቅዎ ቻርጀር የለም',
   'sale.chargerShort': 'በሱቅዎ ይህ ቻርጀር በቂ የለም።',
 }
 
