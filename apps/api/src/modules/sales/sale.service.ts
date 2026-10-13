@@ -364,7 +364,7 @@ export async function getSaleById(id: string, viewer: Viewer) {
 
 // Only an untouched draft can be removed. Anything submitted is part of the
 // record.
-export async function deleteSale(id: string, viewer: Viewer) {
+export async function deleteSale(id: string, viewer: Viewer, restock = true) {
   const sale = await prisma.sale.findUnique({
     where: { id },
     select: {
@@ -380,11 +380,12 @@ export async function deleteSale(id: string, viewer: Viewer) {
     throw new Error("SALE_NOT_FOUND");
   }
 
-  // The Owner can remove any sale: what it took goes back on that store's
-  // shelf, and its IMEIs can be sold again.
+  // The Owner can remove any sale. With restock, what it took goes back on
+  // that store's shelf; without, the goods stay gone and only the record
+  // goes. Its IMEIs can be sold again either way.
   if (viewer.role === "OWNER") {
     await prisma.$transaction(async (tx) => {
-      if (sale.status !== "DRAFT") {
+      if (restock && sale.status !== "DRAFT") {
         for (const item of sale.items) {
           await tx.inventoryBalance.upsert({
             where: {

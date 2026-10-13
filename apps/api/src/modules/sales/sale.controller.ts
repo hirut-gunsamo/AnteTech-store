@@ -212,6 +212,7 @@ export async function getSaleController(
 export async function deleteSaleController(
   request: FastifyRequest<{
     Params: SaleParams;
+    Body: { restock?: boolean } | undefined;
   }>,
   reply: FastifyReply,
 ) {
@@ -219,10 +220,11 @@ export async function deleteSaleController(
   if (!viewer) return reply;
 
   try {
-    await deleteSale(request.params.id, viewer);
+    // Items go back on the shelf unless the Owner says they really left.
+    await deleteSale(request.params.id, viewer, request.body?.restock !== false);
 
     return reply.send({
-      message: "Draft sale deleted",
+      message: "Sale deleted",
     });
   } catch (error) {
     return handleSaleError(error, reply) ?? Promise.reject(error);

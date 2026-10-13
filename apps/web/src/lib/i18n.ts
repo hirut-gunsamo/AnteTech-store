@@ -1424,10 +1424,14 @@ export const en = {
   'sale.chargerNoneInStore': 'No charger in your store',
   'sale.chargerShort': 'Not enough of this charger in your store.',
   'ds.itemsSold': 'Items sold',
-  'sales.deleteConfirm': 'Delete sale {id}? Its items go back into the store\'s stock. This cannot be undone.',
-  'sales.deleteManyConfirm': 'Delete {n} sales? Their items go back into the stores\' stock. This cannot be undone.',
   'sales.deleted': '{n} sale(s) deleted; the items are back in stock.',
   'sales.deleteN': 'Delete ({n})',
+  'sales.deleteTitle': 'Delete {n} sale(s)',
+  'sales.restock': 'Put the items back in stock',
+  'sales.restockOn': 'For a mistake or a return: the items go back into the store they were sold from.',
+  'sales.restockOff': 'The goods really left the shop: only the record is deleted, stock stays as it is.',
+  'sales.deleteWarn': 'The sale is removed from sales, reports and cash. This cannot be undone.',
+  'sales.deletedNoStock': '{n} sale(s) deleted; stock was not changed.',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2818,10 +2822,14 @@ export const am: Record<TranslationKey, string> = {
   'sale.chargerNoneInStore': 'በሱቅዎ ቻርጀር የለም',
   'sale.chargerShort': 'በሱቅዎ ይህ ቻርጀር በቂ የለም።',
   'ds.itemsSold': 'የተሸጡ ዕቃዎች',
-  'sales.deleteConfirm': 'ሽያጭ {id} ይሰረዝ? ዕቃዎቹ ወደ ሱቁ ክምችት ይመለሳሉ። ይህ መመለስ አይቻልም።',
-  'sales.deleteManyConfirm': '{n} ሽያጮች ይሰረዙ? ዕቃዎቻቸው ወደ ሱቆቹ ክምችት ይመለሳሉ። ይህ መመለስ አይቻልም።',
   'sales.deleted': '{n} ሽያጭ ተሰርዟል፤ ዕቃዎቹ ወደ ክምችት ተመልሰዋል።',
   'sales.deleteN': 'ሰርዝ ({n})',
+  'sales.deleteTitle': '{n} ሽያጭ ሰርዝ',
+  'sales.restock': 'ዕቃዎቹን ወደ ክምችት መልስ',
+  'sales.restockOn': 'ለስህተት ወይም ለተመለሰ ዕቃ፦ ዕቃዎቹ ወደ ተሸጡበት ሱቅ ይመለሳሉ።',
+  'sales.restockOff': 'ዕቃዎቹ በእርግጥ ወጥተዋል፦ መዝገቡ ብቻ ይሰረዛል፣ ክምችቱ አይቀየርም።',
+  'sales.deleteWarn': 'ሽያጩ ከሽያጮች፣ ሪፖርቶችና ገንዘብ ይወገዳል። ይህ መመለስ አይቻልም።',
+  'sales.deletedNoStock': '{n} ሽያጭ ተሰርዟል፤ ክምችቱ አልተቀየረም።',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
