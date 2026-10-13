@@ -5,7 +5,6 @@ import { Card, Empty } from '../components/Card'
 import { DownloadButton } from '../components/DownloadButton'
 import { icons } from '../components/icons'
 import { ApproveRequestDialog } from '../components/requests/ApproveRequestDialog'
-import { CategoryDecisions } from '../components/requests/CategoryDecisions'
 import { NewRequestDialog } from '../components/requests/NewRequestDialog'
 import { RequestDetails } from '../components/requests/RequestDetails'
 import { Toasts } from '../components/Toasts'
@@ -685,6 +684,7 @@ export default function Requests() {
                     <th scope="col">{t('req.requestedBy')}</th>
                     <th scope="col">{t('req.route')}</th>
                     <th scope="col">{t('req.items')}</th>
+                    <th scope="col">{t('req.quantity')}</th>
                     <th scope="col">{t('common.status')}</th>
                     <th scope="col" className={styles.actionsCol}>
                       {/* With rows ticked, the header offers to delete them. */}
@@ -759,12 +759,25 @@ export default function Requests() {
 
                         {/* Each category with its own Approve and Reject, or
                             how it was decided. */}
+                        {/* As on the SIM app: names in one column, how many in the
+                            next. Approving is done from the ⋯ menu or Approvals. */}
                         <td data-label={t('req.items')} data-col="items">
-                          <CategoryDecisions
-                            request={request}
-                            onDecided={onDecided}
-                            onError={(message) => push('error', message)}
-                          />
+                          <ul className={styles.itemNames}>
+                            {request.items.map((item) => (
+                              <li key={item.id}>{item.product.name}</li>
+                            ))}
+                          </ul>
+                        </td>
+                        <td data-label={t('req.quantity')}>
+                          <ul className={`${styles.itemNames} ${styles.itemQty} tabular`}>
+                            {request.items.map((item) => (
+                              <li key={item.id}>
+                                {count(item.approvedQuantity !== null && item.approvedQuantity !== item.quantity
+                                  ? item.approvedQuantity
+                                  : item.quantity)}
+                              </li>
+                            ))}
+                          </ul>
                         </td>
 
                         <td data-label={t('common.status')}>
@@ -822,10 +835,9 @@ export default function Requests() {
                                   {t('req.viewDetails')}
                                 </button>
 
-                                {/* Approve and Reject are per category, in
-                                    the Items column; this sends what was
-                                    approved. */}
-                                {readyToSend(request, user?.id) ? (
+                                {/* The Owner approves (choosing how many to
+                                    send) or rejects from here. */}
+                                {isOwner && request.status === 'PENDING' ? (
                                   <button
                                     type="button"
                                     role="menuitem"
@@ -834,7 +846,20 @@ export default function Requests() {
                                       setOpenMenu(null)
                                     }}
                                   >
-                                    {t('appr.send')}
+                                    {t('appr.approve')}
+                                  </button>
+                                ) : null}
+
+                                {isOwner && request.status === 'PENDING' ? (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                      const reason = window.prompt(t('req.rejectReasonPrompt'))
+                                      if (reason && reason.trim()) void act(request, 'reject', { rejectionReason: reason.trim() })
+                                    }}
+                                  >
+                                    {t('appr.reject')}
                                   </button>
                                 ) : null}
 

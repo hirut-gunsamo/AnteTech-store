@@ -484,7 +484,7 @@ export const en = {
   'appr.approve': 'Approve',
   'appr.send': 'Send',
   'dlg.sendApproved': 'Send approved items',
-  'dlg.sendIntro': 'Sending the {units} units you approved to {store}. Choose where they ship from and who is bringing them.',
+  'dlg.sendIntro': 'Sending the {units} units you approved to {store}. Approve as it is, or pick a lower number for a line.',
   'appr.itemApproved': '{name} approved ({n} units)',
   'appr.itemRejected': '{name} rejected ({n} units)',
   'appr.verify': 'Verify',
@@ -678,7 +678,7 @@ export const en = {
   'det.driver': 'Delivery',
   'det.driverLine': '{name} · {phone} · {plate}',
   'dlg.approveIntro':
-    '{store} asked for {units} units. Change a number to approve less, or enter 0 to decline that line.',
+    '{store} asked for {units} units. Approve as it is, or pick a lower number; 0 declines that line.',
   'dlg.requestedN': 'Requested {n}',
   'dlg.approveQty': 'Approve',
   'dlg.approveQtyFor': 'Units to approve for {product}',
@@ -1405,6 +1405,11 @@ export const en = {
   'req.deleted': '{n} request(s) deleted.',
   'req.deleteN': 'Delete ({n})',
   'req.receivedBy': 'Received by {name} · {date}',
+  'req.quantity': 'Quantity',
+  'req.rejectReasonPrompt': 'Why is this request rejected?',
+  'dlg.qtyAll': '{n} (all)',
+  'dlg.qtyNone': '0 (none)',
+  'dlg.qtyOver': '{n} (not in stock)',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -1861,7 +1866,7 @@ export const am: Record<TranslationKey, string> = {
   'appr.approve': 'አጽድቅ',
   'appr.send': 'ላክ',
   'dlg.sendApproved': 'የጸደቁትን ዕቃዎች ላክ',
-  'dlg.sendIntro': 'ያጸደቋቸውን {units} ዕቃዎች ወደ {store} በመላክ ላይ። ከየት እንደሚላኩና ማን እንደሚያመጣቸው ይምረጡ።',
+  'dlg.sendIntro': 'ያጸደቋቸውን {units} ዕቃዎች ወደ {store} በመላክ ላይ። እንዳለ ያጽድቁ፣ ወይም ለአንድ መስመር ያነሰ ቁጥር ይምረጡ።',
   'appr.itemApproved': '{name} ጸድቋል ({n} ዕቃዎች)',
   'appr.itemRejected': '{name} ውድቅ ተደርጓል ({n} ዕቃዎች)',
   'appr.verify': 'አረጋግጥ',
@@ -2053,7 +2058,7 @@ export const am: Record<TranslationKey, string> = {
   'det.driver': 'አቅርቦት',
   'det.driverLine': '{name} · {phone} · {plate}',
   'dlg.approveIntro':
-    '{store} {units} ጠይቋል። ያነሰ ለማጽደቅ ቁጥሩን ይቀይሩ፣ ወይም መስመሩን ለመከልከል 0 ያስገቡ።',
+    '{store} {units} ጠይቋል። እንዳለ ያጽድቁ ወይም ያነሰ ቁጥር ይምረጡ፤ 0 መስመሩን ይከለክላል።',
   'dlg.requestedN': 'የተጠየቀ {n}',
   'dlg.approveQty': 'የሚጸድቅ',
   'dlg.approveQtyFor': 'ለ{product} የሚጸድቅ ብዛት',
@@ -2776,6 +2781,11 @@ export const am: Record<TranslationKey, string> = {
   'req.deleted': '{n} ጥያቄ(ዎች) ተሰርዘዋል።',
   'req.deleteN': 'ሰርዝ ({n})',
   'req.receivedBy': 'የተቀበለው {name} · {date}',
+  'req.quantity': 'ብዛት',
+  'req.rejectReasonPrompt': 'ይህ ጥያቄ ለምን ተቀባይነት አላገኘም?',
+  'dlg.qtyAll': '{n} (ሁሉም)',
+  'dlg.qtyNone': '0 (ምንም)',
+  'dlg.qtyOver': '{n} (በክምችት የለም)',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }

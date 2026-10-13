@@ -28,11 +28,13 @@ export function ApproveRequestDialog({
   const t = useT()
 
   // Items already approved or rejected one by one: only the approved ones are
-  // sent, at the amount asked for, and none of it is edited here.
+  // sent, and each can still be lowered here (the store may have fewer).
   const decided = request.items.some((item) => item.approvedQuantity !== null)
   const items = decided
     ? request.items.filter((item) => (item.approvedQuantity ?? 0) > 0)
     : request.items
+  // The most a line can send: what was approved, or else what was asked for.
+  const maxOf = (item: (typeof items)[number]) => (decided ? (item.approvedQuantity ?? 0) : item.quantity)
 
   const [branches, setBranches] = useState<BranchRow[] | null>(null)
   const [pickedSource, setSourceBranchId] = useState('')
@@ -43,12 +45,10 @@ export function ApproveRequestDialog({
   // Who is driving it over. Asked for here because the branch waiting for the
   // goods is told before the van leaves, not after it arrives.
 
-  // Starts at what was asked for, so approving in full is still one click.
-  const [quantities, setQuantities] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      request.items.map((item) => [item.id, String(item.quantity)]),
-    ),
-  )
+  // Only what the Owner changed. An untouched line starts at what was asked
+  // for, or at what the store holds when that is less, so Approve as it is
+  // is one tap.
+  const [quantities, setQuantities] = useState<Record<string, string>>({})
 
   // Tagged with the branch it belongs to, so a slow answer for a branch the
   // Owner has since moved away from is never shown against the new one.
@@ -149,11 +149,12 @@ export function ApproveRequestDialog({
       : null
 
   const lines = items.map((item) => {
-    const raw = quantities[item.id] ?? ''
+    const inStock = stock ? (stock.get(item.product.id) ?? 0) : null
+    const raw =
+      quantities[item.id] ?? String(inStock === null ? maxOf(item) : Math.min(maxOf(item), inStock))
     const qty = Number(raw)
     const valid =
-      raw.trim() !== '' && Number.isInteger(qty) && qty >= 0 && qty <= item.quantity
-    const inStock = stock ? (stock.get(item.product.id) ?? 0) : null
+      raw.trim() !== '' && Number.isInteger(qty) && qty >= 0 && qty <= maxOf(item)
 
     return {
       item,
@@ -220,15 +221,11 @@ export function ApproveRequestDialog({
         body: {
           sourceBranchId,
           ...(note.trim() ? { notes: note.trim() } : {}),
-          // Decided one by one: the server sends what was approved.
-          ...(decided
-            ? {}
-            : {
-                items: lines.map((line) => ({
-                  itemId: line.item.id,
-                  approvedQuantity: sendOf(line),
-                })),
-              }),
+          // Every line as chosen here; a decided line can only go down.
+          items: lines.map((line) => ({
+            itemId: line.item.id,
+            approvedQuantity: sendOf(line),
+          })),
         },
       })
 
@@ -329,22 +326,28 @@ export function ApproveRequestDialog({
 
               <label className={styles.qtyField}>
                 <span>{t('dlg.approveQty')}</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  max={line.item.quantity}
-                  step="1"
+                {/* A dropdown from what was asked for down to none: approve as
+                    it is, or pick fewer. */}
+                <select
                   value={line.raw}
-                  onChange={(event) =>
-                    setQuantity(line.item.id, event.target.value)
-                  }
+                  onChange={(event) => setQuantity(line.item.id, event.target.value)}
                   aria-label={t('dlg.approveQtyFor', {
                     product: line.item.product.name,
                   })}
-                  readOnly={decided}
                   required
-                />
+                >
+                  {Array.from({ length: maxOf(line.item) + 1 }, (_, index) => maxOf(line.item) - index).map((n) => (
+                    <option key={n} value={String(n)}>
+                      {n === maxOf(line.item)
+                        ? t('dlg.qtyAll', { n })
+                        : n === 0
+                          ? t('dlg.qtyNone')
+                          : line.inStock !== null && n > line.inStock
+                            ? t('dlg.qtyOver', { n })
+                            : String(n)}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               {!line.valid ? (

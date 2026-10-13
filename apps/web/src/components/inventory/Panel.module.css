@@ -537,8 +537,10 @@
   color: var(--text-2);
 }
 
-.qtyField input {
+.qtyField input,
+.qtyField select {
   width: 100%;
+  min-width: 0;
   padding: 11px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
