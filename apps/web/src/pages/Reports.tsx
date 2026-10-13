@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from '../auth/context'
 import { Card, Empty } from '../components/Card'
 import { ItemBreakdown, type ItemRow } from '../components/reports/ItemBreakdown'
+import { SalesDaysReport } from '../components/reports/SalesDaysReport'
 import { TransferReport } from '../components/reports/TransferReport'
 import { BarList, ColumnChart } from '../components/charts/Charts'
 import { Donut } from '../components/charts/Donut'
@@ -1179,6 +1180,9 @@ export default function Reports() {
 
       {tab === 'SALES' ? (
         <>
+          {/* One line per seller per day: the report the business reads first. */}
+          <SalesDaysReport from={from} to={to} branch={branch} reload={applied} />
+
           {byStore ? (
             // Each store's trend and mix on its own, never added together.
             storeReports.map((store) =>

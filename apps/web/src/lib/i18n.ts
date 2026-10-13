@@ -1348,6 +1348,17 @@ export const en = {
   'pl.none': 'Nothing in these dates.',
   'pl.uncosted': '{n} items sold ({amount}) have no buying price, so what they cost is missing and the profit shows too high.',
   'pl.uncostedLink': 'Add buying prices on the Products page.',
+  'ds.title': 'Daily sales',
+  'ds.note': 'One line per seller per day: phones and accessories sold, the day\'s money, and what is left after deductions and expenses.',
+  'ds.summary': '{phones} phones · {accessories} accessories · {total} sold · {net} left after deductions and expenses',
+  'ds.phones': 'Phones',
+  'ds.accessories': 'Accessories',
+  'ds.dayTotal': 'Day total',
+  'ds.transfer': 'By transfer',
+  'ds.cash': 'Cash',
+  'ds.deductions': 'Deductions',
+  'ds.expenses': 'Expenses',
+  'ds.net': 'Left',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2662,6 +2673,17 @@ export const am: Record<TranslationKey, string> = {
   'pl.none': 'በእነዚህ ቀኖች ምንም የለም።',
   'pl.uncosted': '{n} የተሸጡ እቃዎች ({amount}) የግዢ ዋጋ የላቸውም፤ ወጪያቸው ስለጎደለ ትርፉ ከእውነቱ በላይ ይታያል።',
   'pl.uncostedLink': 'በምርቶች ገጽ የግዢ ዋጋ ያስገቡ።',
+  'ds.title': 'የዕለት ሽያጭ',
+  'ds.note': 'ለእያንዳንዱ ሻጭ በየቀኑ አንድ መስመር፦ የተሸጡ ስልኮችና መለዋወጫዎች፣ የቀኑ ገንዘብ፣ እና ተቀናሽና ወጪ ከተቀነሰ በኋላ የቀረው።',
+  'ds.summary': '{phones} ስልኮች · {accessories} መለዋወጫዎች · {total} ተሸጧል · ተቀናሽና ወጪ ከተቀነሰ {net} ቀርቷል',
+  'ds.phones': 'ስልኮች',
+  'ds.accessories': 'መለዋወጫዎች',
+  'ds.dayTotal': 'የቀኑ ድምር',
+  'ds.transfer': 'በዝውውር',
+  'ds.cash': 'ጥሬ ገንዘብ',
+  'ds.deductions': 'ተቀናሽ',
+  'ds.expenses': 'ወጪዎች',
+  'ds.net': 'የቀረው',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
