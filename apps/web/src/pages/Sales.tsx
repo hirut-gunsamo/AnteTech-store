@@ -7,6 +7,7 @@ import { icons } from '../components/icons'
 import { NewSaleDialog } from '../components/sales/NewSaleDialog'
 import { SaleDetails } from '../components/sales/SaleDetails'
 import { SalesDaysReport } from '../components/reports/SalesDaysReport'
+import { IncomingDeliveries } from '../components/transfers/IncomingDeliveries'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { useBranchList } from '../lib/branches'
@@ -478,6 +479,16 @@ export default function Sales() {
           </div>
         ))}
       </div>
+
+      {/* Approved stock on its way: received here, it can be sold at once. */}
+      <IncomingDeliveries
+        storeId={user?.branch?.id}
+        onReceived={(message) => {
+          push('success', message)
+          setReloadKey((n) => n + 1)
+        }}
+        onError={(message) => push('error', message)}
+      />
 
       {/* Each day in one line, as on Reports: this month unless dates are set. */}
       <SalesDaysReport

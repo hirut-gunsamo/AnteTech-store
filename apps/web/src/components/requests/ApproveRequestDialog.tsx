@@ -35,7 +35,7 @@ export function ApproveRequestDialog({
     : request.items
 
   const [branches, setBranches] = useState<BranchRow[] | null>(null)
-  const [sourceBranchId, setSourceBranchId] = useState('')
+  const [pickedSource, setSourceBranchId] = useState('')
   // Restock from the main warehouse, or transfer from another branch.
   const [sourceMode, setSourceMode] = useState<'MAIN' | 'BRANCH'>('MAIN')
   const [note, setNote] = useState('')
@@ -92,6 +92,25 @@ export function ApproveRequestDialog({
     return () => controller.abort()
   }, [])
 
+  // Restock ships from an active main warehouse; a transfer from any other
+  // active branch. Never from the branch that raised the request.
+  const sources = useMemo(
+    () =>
+      (branches ?? []).filter(
+        (entry) =>
+          entry.isActive &&
+          entry.id !== request.requestedBy.branch?.id &&
+          (sourceMode === 'MAIN' ? entry.isMainStock : !entry.isMainStock),
+      ),
+    [branches, request.requestedBy.branch?.id, sourceMode],
+  )
+
+  // Starts on the first store that can send it (the main store), so the
+  // Owner can approve at once; another can still be picked.
+  const sourceBranchId = sources.some((entry) => entry.id === pickedSource)
+    ? pickedSource
+    : (sources[0]?.id ?? '')
+
   // What the chosen branch holds, so the Owner can see why they might
   // approve less before the API refuses a shipment it cannot cover.
   useEffect(() => {
@@ -122,18 +141,6 @@ export function ApproveRequestDialog({
     return () => controller.abort()
   }, [sourceBranchId])
 
-  // Restock ships from an active main warehouse; a transfer from any other
-  // active branch. Never from the branch that raised the request.
-  const sources = useMemo(
-    () =>
-      (branches ?? []).filter(
-        (entry) =>
-          entry.isActive &&
-          entry.id !== request.requestedBy.branch?.id &&
-          (sourceMode === 'MAIN' ? entry.isMainStock : !entry.isMainStock),
-      ),
-    [branches, request.requestedBy.branch?.id, sourceMode],
-  )
 
   const sourceName = sources.find((entry) => entry.id === sourceBranchId)?.name
   const stock =
@@ -162,12 +169,17 @@ export function ApproveRequestDialog({
   const approving = lines.reduce((sum, line) => sum + line.qty, 0)
   const allValid = lines.every((line) => line.valid)
   const anyOverStock = lines.some((line) => line.overStock)
+  // A line asking for more than the store holds sends what it holds, so the
+  // Owner can always approve; the rest stays unsent.
+  const sendOf = (line: (typeof lines)[number]) =>
+    line.inStock !== null ? Math.min(line.qty, line.inStock) : line.qty
+  const sending = lines.reduce((sum, line) => sum + sendOf(line), 0)
 
   const canSubmit =
     !busy &&
     allValid &&
     approving > 0 &&
-    !anyOverStock &&
+    sending > 0 &&
     sourceBranchId !== ''
 
   function setQuantity(itemId: string, value: string) {
@@ -214,7 +226,7 @@ export function ApproveRequestDialog({
             : {
                 items: lines.map((line) => ({
                   itemId: line.item.id,
-                  approvedQuantity: line.qty,
+                  approvedQuantity: sendOf(line),
                 })),
               }),
         },
@@ -402,7 +414,9 @@ export function ApproveRequestDialog({
 
           {error ? <p className={styles.error}>{error}</p> : null}
           {/* Why the button is off, next to it rather than up in the list. */}
-          {anyOverStock ? <p className={styles.blocked}>{t('dlg.overStockAll', { store: sourceName ?? '' })}</p> : null}
+          {anyOverStock ? (
+            <p className={styles.blocked}>{t('dlg.overStockAll', { store: sourceName ?? '', n: sending })}</p>
+          ) : null}
 
           <div className={styles.actions}>
             <button type="button" className={styles.cancel} onClick={onClose}>
