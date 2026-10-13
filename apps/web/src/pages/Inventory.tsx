@@ -302,7 +302,6 @@ export default function Inventory() {
       : filtered
 
     const header = [
-      'SKU',
       'Product',
       'Category',
       'Store',
@@ -318,7 +317,6 @@ export default function Inventory() {
       header.join(','),
       ...rows.map((row) =>
         [
-          row.product.sku,
           row.product.name,
           row.product.productCategory?.name ??
             (CATEGORY_PILL[row.product.category]
@@ -626,7 +624,7 @@ export default function Inventory() {
                         aria-label={t("common.selectAll")}
                       />
                     </th>
-                    <th scope="col">{t('inv.sku')}</th>
+                    <th scope="col" aria-label={t('inv.category')} />
                     <th scope="col">{t('inv.product')}</th>
                     <th scope="col">{t('inv.category')}</th>
                     <th scope="col">{t('common.branch')}</th>
@@ -655,8 +653,8 @@ export default function Inventory() {
                       <tr
                         key={row.id}
                         // Read by the phone layout's ::after to rebuild the
-                        // "SKU · Branch · N in stock" line without extra markup.
-                        data-meta={`${row.product.sku} · ${row.location.name} · ${t('inv.nInStock', { n: count(row.quantity) })}`}
+                        // "Store · N in stock" line without extra markup.
+                        data-meta={`${row.location.name} · ${t('inv.nInStock', { n: count(row.quantity) })}`}
                         className={styles.clickableRow}
                         onClick={() => setDetailsOf(row)}
                       >
@@ -685,7 +683,6 @@ export default function Inventory() {
                                 size={13}
                               />
                             </span>
-                            <span className="tabular">{row.product.sku}</span>
                           </span>
                         </td>
 

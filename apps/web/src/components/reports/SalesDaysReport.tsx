@@ -35,6 +35,7 @@ export function SalesDaysReport({ from, to, branch, reload }: { from: string; to
   const [sales, setSales] = useState<Sale[] | null>(null)
   const [deductions, setDeductions] = useState<Deduction[]>([])
   const [expenses, setExpenses] = useState<ExpenseReport['expenses']>([])
+  const [open, setOpen] = useState<string | null>(null)
 
   useEffect(() => {
     if (!from || !to) return
@@ -142,8 +143,15 @@ export function SalesDaysReport({ from, to, branch, reload }: { from: string; to
               </tr>
             </thead>
             <tbody>
-              {days.map((day) => (
-                <tr key={day.key}>
+              {days.map((day) => [
+                <tr
+                  key={day.key}
+                  className={styles.clickable}
+                  tabIndex={0}
+                  aria-expanded={open === day.key}
+                  onClick={() => setOpen(open === day.key ? null : day.key)}
+                  onKeyDown={(event) => event.key === 'Enter' && setOpen(open === day.key ? null : day.key)}
+                >
                   <td data-label={t('req.date')} className={styles.when}>
                     {shortDate(`${day.date}T12:00:00`)}
                   </td>
@@ -159,8 +167,32 @@ export function SalesDaysReport({ from, to, branch, reload }: { from: string; to
                   {money(t('ds.deductions'), day.deductions, `${styles.minus} ${styles.groupStart}`)}
                   {money(t('ds.expenses'), day.expenses, styles.minus)}
                   {money(t('ds.net'), day.net, `${styles.net} ${styles.groupStart}`)}
-                </tr>
-              ))}
+                </tr>,
+                // Tapping a day lists what was sold, product by product.
+                open === day.key ? (
+                  <tr key={`${day.key}-items`} className={styles.detail}>
+                    <td colSpan={10}>
+                      {day.items.length === 0 ? (
+                        <em>{t('rep.noSalesPeriod')}</em>
+                      ) : (
+                        <ul>
+                          {[...day.items]
+                            .sort((a, b) => b.amount - a.amount)
+                            .map((item) => (
+                              <li key={item.name}>
+                                <span>{item.name}</span>
+                                <span className="tabular">
+                                  {count(item.quantity)} × {currency(item.amount / item.quantity)}
+                                </span>
+                                <strong className="tabular">{currency(item.amount)}</strong>
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                ) : null,
+              ])}
             </tbody>
           </table>
         </div>

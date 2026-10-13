@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
 import { sendOrQueue } from '../../lib/sync'
 import { BANKS } from '../../lib/banks'
-import { useCategories } from '../../lib/categories'
 import { useT, type TranslationKey } from '../../lib/i18n'
 import { count, currency } from '../../lib/format'
 import type { InventorySummary } from '../../lib/types'
@@ -11,7 +10,7 @@ import styles from '../inventory/Panel.module.css'
 
 // `price` is what one sells for: agreed with the customer, so the seller
 // enters it; the product's suggested price fills it in to start with.
-type Line = { categoryId: string; typeId: string; productId: string; quantity: string; price: string; serials: string }
+type Line = { typeId: string; productId: string; quantity: string; price: string; serials: string }
 
 // Which kinds the API requires one IMEI / serial per unit for. A counted line
 // must NOT send serials at all, so it is left out of this map entirely.
@@ -45,7 +44,7 @@ export function NewSaleDialog({
   const [stock, setStock] = useState<InventorySummary | null>(null)
   const t = useT()
   const [lines, setLines] = useState<Line[]>([
-    { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '' },
+    { typeId: '', productId: '', quantity: '1', price: '', serials: '' },
   ])
   const [cashReceived, setCashReceived] = useState('')
   const [transferReceived, setTransferReceived] = useState('')
@@ -139,6 +138,7 @@ export function NewSaleDialog({
         /** The Owner's top-level type: a brand. */
         typeId: string
         typeName: string
+        typeIds: string[]
         /** What the list shows. */
         label: string
         price: number
@@ -159,6 +159,9 @@ export function NewSaleDialog({
           categoryId: row.product.categoryId ?? '',
           typeId: row.product.type?.parent?.id ?? row.product.type?.id ?? '',
           typeName: row.product.type?.parent?.name ?? row.product.type?.name ?? '—',
+          // Matched on either level, so an older phone filed under a model
+          // still shows under its brand.
+          typeIds: [row.product.type?.id, row.product.type?.parent?.id].filter((id): id is string => Boolean(id)),
           label: row.product.name,
           price: Number(row.product.price ?? 0),
           qty: row.quantity,
@@ -170,12 +173,6 @@ export function NewSaleDialog({
       // Numbers in order: "A15 64GB" before "A15 128GB".
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
   }, [stock])
-
-  // Categories the store has something in, in the Owner's order.
-  const { categories } = useCategories()
-  const saleCategories = categories.filter((entry) =>
-    available.some((product) => product.categoryId === entry.id),
-  )
 
   const priced = lines.map((line) => {
     const product = available.find((entry) => entry.id === line.productId)
@@ -323,35 +320,10 @@ export function NewSaleDialog({
         <form className={styles.body} onSubmit={handleSubmit}>
           {priced.map((line, index) => (
             <div key={index} className={styles.saleLine}>
-              {/* Category first, on its own row; then the product within it
-                  and how many. */}
+              {/* The type first (Speaker, Infinix), then that type's products. */}
               <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
                 <span>
-                  {t('dlg.item', { n: index + 1 })} · {t('prod.category')}
-                </span>
-                <select
-                  value={line.categoryId}
-                  onChange={(event) =>
-                    setLine(index, { categoryId: event.target.value, typeId: '', productId: '' })
-                  }
-                >
-                  <option value="">{t('sale.allCategories')}</option>
-                  {saleCategories.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {/* Then the Owner's type within it: a brand. */}
-              <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
-                <span>
-                  {t(
-                    categories.find((entry) => entry.id === line.categoryId)?.kind === 'SERIALIZED'
-                      ? 'prod.brand'
-                      : 'prod.typeName',
-                  )}
+                  {t('dlg.item', { n: index + 1 })} · {t('prod.typeName')}
                 </span>
                 <select
                   value={line.typeId}
@@ -361,7 +333,6 @@ export function NewSaleDialog({
                   {[
                     ...new Map(
                       available
-                        .filter((entry) => !line.categoryId || entry.categoryId === line.categoryId)
                         .filter((entry) => entry.typeId)
                         .map((entry) => [entry.typeId, entry.typeName] as const),
                     ),
@@ -393,8 +364,7 @@ export function NewSaleDialog({
                 >
                   <option value="">{t("dlg.selectProduct")}</option>
                   {available
-                    .filter((entry) => !line.categoryId || entry.categoryId === line.categoryId)
-                    .filter((entry) => !line.typeId || entry.typeId === line.typeId)
+                    .filter((entry) => !line.typeId || entry.typeIds.includes(line.typeId))
                     .map((entry) => (
                     <option key={entry.id} value={entry.id}>
                       {entry.label}
@@ -507,7 +477,7 @@ export function NewSaleDialog({
             onClick={() =>
               setLines((current) => [
                 ...current,
-                { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '' },
+                { typeId: '', productId: '', quantity: '1', price: '', serials: '' },
               ])
             }
           >

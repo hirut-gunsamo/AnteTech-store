@@ -12,10 +12,9 @@ import styles from '../inventory/Panel.module.css'
  * Defines a product: what the business sells, as opposed to how many of it a
  * branch is holding.
  *
- * What the product *is* comes from the type tree rather than free text — a
- * brand and model for a phone, a brand for an accessory — so the form picks a
- * type instead of typing a code. The server derives the name and the product
- * code from that type and the variant when none is given.
+ * A product is a category, a type within it, and a model: Accessories,
+ * Speaker, T310. The model is required and is the product's name; the
+ * product code is made by the server.
  */
 export function ProductDialog({
   onClose,
@@ -33,7 +32,6 @@ export function ProductDialog({
   const validCategoryId = categories.some((entry) => entry.id === categoryId)
     ? categoryId
     : (categories[0]?.id ?? '')
-  const category = categories.find((entry) => entry.id === validCategoryId)?.kind ?? 'QUANTITY'
   const [price, setPrice] = useState('')
   // What the business pays for one, for profit and loss. Owner only.
   const [costPrice, setCostPrice] = useState('')
@@ -44,7 +42,6 @@ export function ProductDialog({
   const [color, setColor] = useState('')
 
   const [typeId, setTypeId] = useState('')
-  const [modelId, setModelId] = useState('')
 
   const [types, setTypes] = useState<TypeNode[] | null>(null)
   const [typesReloadKey, setTypesReloadKey] = useState(0)
@@ -98,14 +95,7 @@ export function ProductDialog({
 
   const selectedBrand =
     topLevel.find((node) => node.id === validTypeId) ?? null
-  const models = (selectedBrand?.children ?? []).filter((node) => node.isActive)
 
-  const validModelId =
-    category === 'SERIALIZED' && models.some((node) => node.id === modelId)
-      ? modelId
-      : ''
-
-  const needsName = category === 'SERIALIZED'
 
   // Deletes the chosen type after a confirm. The API refuses while products
   // or types under it still exist, and its message is shown as the error.
@@ -132,13 +122,7 @@ export function ProductDialog({
     // A type added under another category takes the form there with it.
     if (created.categoryId) setCategoryId(created.categoryId)
 
-    if (created.parentId) {
-      setTypeId(created.parentId)
-      setModelId(created.id)
-    } else {
-      setTypeId(created.id)
-      setModelId('')
-    }
+    setTypeId(created.parentId ?? created.id)
   }
 
   const priceValue = Number(price)
@@ -154,11 +138,16 @@ export function ProductDialog({
     priceValid &&
     costValid &&
     validTypeId !== '' &&
-    (!needsName || validModelId !== '')
+    phoneModel.trim() !== ''
 
-  // Serialized goods are filed under a name/model; quantity goods are filed
-  // directly under the chosen top-level type.
-  const effectiveTypeId = needsName ? validModelId : validTypeId
+  // Every product is filed under its type (Privacy glass, Infinix); its name
+  // is the type and the model the Owner types: "Infinix Hot 40". A model
+  // that already starts with the type is not doubled.
+  const effectiveTypeId = validTypeId
+  const model = phoneModel.trim()
+  const fullName = !selectedBrand || model.toLowerCase().startsWith(selectedBrand.name.toLowerCase())
+    ? model
+    : `${selectedBrand.name} ${model}`
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -169,6 +158,7 @@ export function ProductDialog({
 
     const body = {
       typeId: effectiveTypeId,
+      name: fullName,
       ...(price.trim() !== '' ? { price: priceValue } : {}),
       ...(costPrice.trim() !== '' ? { costPrice: Number(costPrice) } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
@@ -222,7 +212,6 @@ export function ProductDialog({
                 value={validCategoryId}
                 onChange={(event) => {
                   setCategoryId(event.target.value)
-                  setModelId('')
                 }}
               >
                 {categories.map((option) => (
@@ -239,7 +228,7 @@ export function ProductDialog({
 
           <label className={styles.field}>
             <span>
-              {t(category === 'SERIALIZED' ? 'prod.brand' : 'prod.typeName')}
+              {t('prod.typeName')}
               <em>{t('common.required')}</em>
             </span>
             <div className={styles.withAdd}>
@@ -247,7 +236,6 @@ export function ProductDialog({
                 value={validTypeId}
                 onChange={(event) => {
                   setTypeId(event.target.value)
-                  setModelId('')
                 }}
                 disabled={topLevel.length === 0}
                 required
@@ -282,42 +270,21 @@ export function ProductDialog({
             </div>
           </label>
 
-          {category === 'SERIALIZED' && selectedBrand ? (
-            <label className={styles.field}>
-              <span>
-                {t('prod.typeName')}<em>{t('common.required')}</em>
-              </span>
-              <div className={styles.withAdd}>
-                <select
-                  value={validModelId}
-                  onChange={(event) => setModelId(event.target.value)}
-                  disabled={models.length === 0}
-                  required
-                >
-                  <option value="">{models.length === 0 ? t('prod.noTypes') : t('prod.typeName')}</option>
-                  {models.map((node) => (
-                    <option key={node.id} value={node.id}>
-                      {node.name}
-                    </option>
-                  ))}
-                </select>
-                {validModelId ? (
-                  <button
-                    type="button"
-                    className={styles.deleteLine}
-                    onClick={() =>
-                      void deleteType(
-                        models.find((node) => node.id === validModelId) ?? null,
-                      )
-                    }
-                    disabled={busy}
-                  >
-                    {t('prod.delete')}
-                  </button>
-                ) : null}
-              </div>
-            </label>
-          ) : null}
+          <label className={styles.field}>
+            <span>
+              {t('prod.model')}<em>{t('common.required')}</em>
+            </span>
+            <input
+              value={phoneModel}
+              onChange={(event) => setPhoneModel(event.target.value)}
+              placeholder={t('prod.phModel')}
+              maxLength={80}
+              required
+            />
+            <small className={styles.hint}>
+              {model ? t('prod.savedAs', { name: fullName }) : t('prod.modelNote')}
+            </small>
+          </label>
 
           <label className={styles.field}>
             <span>
@@ -351,18 +318,6 @@ export function ProductDialog({
 
           {validTypeId ? (
             <>
-              <label className={styles.field}>
-                <span>
-                  {t('prod.model')}<em>{t('prod.optional')}</em>
-                </span>
-                <input
-                  value={phoneModel}
-                  onChange={(event) => setPhoneModel(event.target.value)}
-                  placeholder={t('prod.phModel')}
-                  maxLength={80}
-                />
-              </label>
-
               <label className={styles.field}>
                 <span>
                   {t('prod.storage')}<em>{t('prod.optional')}</em>
@@ -430,7 +385,6 @@ export function ProductDialog({
             setAddingCategory(false)
             reloadCategories()
             setCategoryId(created.id)
-            setModelId('')
           }}
         />
       ) : null}

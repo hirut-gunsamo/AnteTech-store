@@ -4,7 +4,7 @@ import { z } from "zod";
 // A name may be supplied to override the generated one, but never a code.
 const baseProductSchema = z.object({
   typeId: z.string().min(1),
-  name: z.string().min(2).max(150).optional(),
+  name: z.string().trim().min(1).max(150).optional(),
   description: z.string().max(500).optional(),
   // A suggestion only: the seller enters the real price at each sale.
   price: z.coerce.number().nonnegative().nullable().optional(),

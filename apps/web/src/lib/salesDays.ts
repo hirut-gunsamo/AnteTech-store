@@ -19,6 +19,8 @@ export type SalesDay = {
   expenses: number
   /** The day's total less its deductions and expenses. */
   net: number
+  /** What was sold that day, product by product. */
+  items: { name: string; quantity: number; amount: number }[]
 }
 
 function localDay(value: string) {
@@ -54,6 +56,7 @@ export function groupByDay(
         deductions: 0,
         expenses: 0,
         net: 0,
+        items: [],
       }
       days.set(key, day)
     }
@@ -71,6 +74,11 @@ export function groupByDay(
       const figure = item.product.category === 'SERIALIZED' ? day.phones : day.accessories
       figure.quantity += item.quantity
       figure.amount += Number(item.lineTotal)
+      const line = day.items.find((entry) => entry.name === item.product.name)
+      if (line) {
+        line.quantity += item.quantity
+        line.amount += Number(item.lineTotal)
+      } else day.items.push({ name: item.product.name, quantity: item.quantity, amount: Number(item.lineTotal) })
     }
   }
   // Money taken off a seller is part of their day, even a day with no sale.

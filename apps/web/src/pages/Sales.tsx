@@ -6,6 +6,7 @@ import { DownloadButton } from '../components/DownloadButton'
 import { icons } from '../components/icons'
 import { NewSaleDialog } from '../components/sales/NewSaleDialog'
 import { SaleDetails } from '../components/sales/SaleDetails'
+import { SalesDaysReport } from '../components/reports/SalesDaysReport'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { useBranchList } from '../lib/branches'
@@ -478,6 +479,14 @@ export default function Sales() {
         ))}
       </div>
 
+      {/* Each day in one line, as on Reports: this month unless dates are set. */}
+      <SalesDaysReport
+        from={from || monthStartDay()}
+        to={to || todayDay()}
+        branch={branch}
+        reload={reloadKey}
+      />
+
       <Card>
         <div className={styles.tabs} role="tablist">
           <div className={styles.tabList}>
@@ -855,4 +864,17 @@ function pageNumbers(current: number, total: number): (number | '…')[] {
 
   out.push(total)
   return out
+}
+
+function localDay(date: Date) {
+  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`
+}
+
+function todayDay() {
+  return localDay(new Date())
+}
+
+function monthStartDay() {
+  const now = new Date()
+  return localDay(new Date(now.getFullYear(), now.getMonth(), 1))
 }
