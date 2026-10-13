@@ -60,6 +60,7 @@ const requestDetail = {
       status: true,
       shippedAt: true,
       receivedAt: true,
+      receivedBy: { select: { id: true, name: true } },
       driverName: true,
       driverPhone: true,
       vehiclePlate: true,
@@ -555,4 +556,29 @@ export async function cancelRequest(id: string, viewer: Viewer) {
     data: { status: "CANCELLED", reviewedAt: new Date() },
     select: requestDetail,
   });
+}
+
+/**
+ * Removes a request. The Owner may remove any; a seller only their own
+ * request while it is still pending and nothing in it has been decided.
+ * A delivery made for it is kept (stock already moved), only unlinked.
+ */
+export async function deleteRequest(id: string, viewer: Viewer) {
+  const request = await prisma.stockRequest.findUnique({
+    where: { id },
+    select: { id: true, status: true, requestedById: true },
+  });
+
+  if (!request) throw new Error("REQUEST_NOT_FOUND");
+
+  if (viewer.role !== "OWNER") {
+    if (request.requestedById !== viewer.userId) throw new Error("NOT_YOUR_REQUEST");
+    if (request.status !== "PENDING") throw new Error("REQUEST_NOT_PENDING");
+    if (await hasDecidedItems(id)) throw new Error("PARTLY_DECIDED");
+  }
+
+  await prisma.$transaction([
+    prisma.stockTransfer.updateMany({ where: { requestId: id }, data: { requestId: null } }),
+    prisma.stockRequest.delete({ where: { id } }),
+  ]);
 }

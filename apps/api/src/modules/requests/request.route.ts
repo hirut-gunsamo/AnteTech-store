@@ -14,6 +14,7 @@ import {
   rejectRequestController,
   cancelRequestController,
   decideRequestItemsController,
+  deleteRequestController,
 } from "./request.controller.js";
 
 type RequestParams = {
@@ -75,5 +76,12 @@ export async function requestRoutes(app: FastifyInstance) {
       preHandler: [authorize(UserRole.OWNER, UserRole.SALES)],
     },
     cancelRequestController,
+  );
+
+  // The Owner removes any request; a seller only their own still-pending one.
+  app.delete<{ Params: RequestParams }>(
+    "/:id",
+    { preHandler: [authorize(UserRole.OWNER, UserRole.SALES)] },
+    deleteRequestController,
   );
 }

@@ -1401,6 +1401,10 @@ export const en = {
   'dlg.overStockAll': '{store} has fewer of some items than asked. Approving sends what it has ({n} units); the rest is not sent.',
   'tr.incomingTitle': 'Delivery on the way ({n})',
   'tr.incomingFrom': 'From {from}',
+  'req.deleteConfirm': 'Delete {n} request(s)? Stock already sent stays where it is.',
+  'req.deleted': '{n} request(s) deleted.',
+  'req.deleteN': 'Delete ({n})',
+  'req.receivedBy': 'Received by {name} · {date}',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2768,6 +2772,10 @@ export const am: Record<TranslationKey, string> = {
   'dlg.overStockAll': '{store} ከተጠየቀው ያነሰ ያለባቸው ዕቃዎች አሉ። ሲያጸድቁ ያለው ({n}) ይላካል፤ የቀረው አይላክም።',
   'tr.incomingTitle': 'በመንገድ ላይ ያለ ዕቃ ({n})',
   'tr.incomingFrom': 'ከ{from}',
+  'req.deleteConfirm': '{n} ጥያቄ(ዎች) ይሰረዙ? የተላከ ዕቃ ባለበት ይቆያል።',
+  'req.deleted': '{n} ጥያቄ(ዎች) ተሰርዘዋል።',
+  'req.deleteN': 'ሰርዝ ({n})',
+  'req.receivedBy': 'የተቀበለው {name} · {date}',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
