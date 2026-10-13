@@ -80,12 +80,19 @@ export function SaleDetails({
               <dd>
                 {sale.paymentMethod === 'TRANSFER'
                   ? `${t('pay.transfer')} · ${sale.bankName ?? ''}`
-                  : t('pay.cash')}
+                  : sale.paymentMethod === 'CASH_AND_TRANSFER'
+                    ? `${t('pay.cashTransfer')} · ${sale.bankName ?? ''}`
+                    : t('pay.cash')}
               </dd>
             </div>
             <div>
-              <dt>{t(sale.paymentMethod === 'TRANSFER' ? 'pay.transferReceived' : 'dlg.cashReceived')}</dt>
-              <dd className="tabular">{currency(received)}</dd>
+              <dt>{t('pay.received')}</dt>
+              <dd className="tabular">
+                {currency(received)}
+                {sale.paymentMethod === 'CASH_AND_TRANSFER'
+                  ? ` (${t('pay.cash')}: ${currency(Number(sale.cashReceived))}, ${t('pay.transfer')}: ${currency(Number(sale.transferReceived))})`
+                  : ''}
+              </dd>
             </div>
             <div>
               <dt>{change < 0 ? t('det.shortBy') : t('det.change')}</dt>

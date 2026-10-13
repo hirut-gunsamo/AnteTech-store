@@ -470,6 +470,7 @@ model Bank {
 enum PaymentMethod {
   CASH
   TRANSFER
+  CASH_AND_TRANSFER
 }
 
 model Sale {

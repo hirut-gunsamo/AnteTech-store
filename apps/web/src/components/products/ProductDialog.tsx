@@ -106,6 +106,8 @@ export function ProductDialog({
       ? modelId
       : ''
 
+  const needsName = category === 'SERIALIZED'
+
   // Deletes the chosen type after a confirm. The API refuses while products
   // or types under it still exist, and its message is shown as the error.
   async function deleteType(node: TypeNode | null) {
@@ -151,11 +153,16 @@ export function ProductDialog({
   const costValid =
     costPrice.trim() === '' || (Number.isFinite(Number(costPrice)) && Number(costPrice) >= 0)
 
-  const valid = nameValid && priceValid && costValid && validTypeId !== ''
+  const valid =
+    nameValid &&
+    priceValid &&
+    costValid &&
+    validTypeId !== '' &&
+    (!needsName || validModelId !== '')
 
-  // The deepest node chosen is what gets submitted: the model if one was
-  // picked, otherwise the brand.
-  const effectiveTypeId = validModelId || validTypeId
+  // Serialized goods are filed under a name/model; quantity goods are filed
+  // directly under the chosen top-level type.
+  const effectiveTypeId = needsName ? validModelId : validTypeId
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -237,7 +244,7 @@ export function ProductDialog({
 
           <label className={styles.field}>
             <span>
-              {t(category === 'SERIALIZED' ? 'prod.brand' : 'prod.type')}
+              {t(category === 'SERIALIZED' ? 'prod.brand' : 'prod.typeName')}
               <em>{t('common.required')}</em>
             </span>
             <div className={styles.withAdd}>
@@ -283,14 +290,16 @@ export function ProductDialog({
           {category === 'SERIALIZED' && selectedBrand ? (
             <label className={styles.field}>
               <span>
-                {t('prod.type')}<em>{t('prod.optional')}</em>
+                {t('prod.typeName')}<em>{t('common.required')}</em>
               </span>
               <div className={styles.withAdd}>
                 <select
                   value={validModelId}
                   onChange={(event) => setModelId(event.target.value)}
+                  disabled={models.length === 0}
+                  required
                 >
-                  <option value="">{t('prod.modelNone')}</option>
+                  <option value="">{models.length === 0 ? t('prod.noTypes') : t('prod.typeName')}</option>
                   {models.map((node) => (
                     <option key={node.id} value={node.id}>
                       {node.name}

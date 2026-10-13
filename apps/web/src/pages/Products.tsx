@@ -181,7 +181,7 @@ export default function Products() {
                 <tr>
                   <th scope="col">{t('prod.name')}</th>
                   <th scope="col">{t('prod.category')}</th>
-                  <th scope="col">{t('prod.type')}</th>
+                  <th scope="col">{t('prod.brand')}</th>
                   <th scope="col">{t('prod.details')}</th>
                   <th scope="col">{t('prod.price')}</th>
                   <th scope="col">{t('prod.costPrice')}</th>
@@ -208,8 +208,8 @@ export default function Products() {
                       <td data-label={t('prod.category')}>
                         {product.productCategory?.name ?? '—'}
                       </td>
-                      <td data-label={t('prod.type')}>
-                        {product.type?.name ?? '—'}
+                      <td data-label={t('prod.brand')}>
+                        {product.phoneDetails?.brand ?? product.type?.name ?? '—'}
                       </td>
                       <td data-label={t('prod.details')}>{detailOf(product)}</td>
                       <td data-label={t('prod.price')} className="tabular">

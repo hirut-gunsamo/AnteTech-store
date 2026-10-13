@@ -120,7 +120,7 @@ export default function ProductTypes() {
                       <th scope="col">
                         {t(isPhone ? 'prod.brand' : 'prod.typeName')}
                       </th>
-                      {isPhone ? <th scope="col">{t('prod.type')}</th> : null}
+                      {isPhone ? <th scope="col">{t('prod.typeName')}</th> : null}
                       <th scope="col" className={base.actionsCol}>
                         {t('common.actions')}
                       </th>
@@ -151,7 +151,7 @@ export default function ProductTypes() {
                           <td className={base.strong} data-label={t('prod.brand')}>
                             {index === 0 ? root.name : ''}
                           </td>
-                          <td data-label={t('prod.type')}>{child.name}</td>
+                          <td data-label={t('prod.typeName')}>{child.name}</td>
                           <td className={base.actionsCol}>
                             <button type="button" className={styles.remove} onClick={() => void remove(child)}>
                               {t('prod.delete')}

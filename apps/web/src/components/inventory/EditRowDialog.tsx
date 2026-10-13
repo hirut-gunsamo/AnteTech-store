@@ -20,6 +20,7 @@ export function EditRowDialog({
   const [price, setPrice] = useState(String(Number(balance.product.price ?? 0)))
   const [quantity, setQuantity] = useState(String(balance.quantity))
   const [reason, setReason] = useState('')
+  const [reasonType, setReasonType] = useState<'ITEMS_OUT' | 'DAMAGED' | 'LOST' | ''>('')
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -48,12 +49,15 @@ export function EditRowDialog({
     Number.isInteger(Number(quantity)) &&
     Number(quantity) >= 0
 
+  const quantityDecreased = quantityChanged && Number(quantity) < balance.quantity
+
   const productChanged = nameChanged || priceChanged
   const anyChange = productChanged || quantityChanged
 
   // A quantity correction has to say why: it is the only edit that changes
   // what the business believes it holds.
   const needsReason = quantityChanged && reason.trim() === ''
+  const needsReasonType = quantityDecreased && reasonType === ''
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -79,6 +83,7 @@ export function EditRowDialog({
           body: {
             quantity: Number(quantity),
             reason: reason.trim(),
+            ...(quantityDecreased ? { reasonType } : {}),
           },
         })
       }
@@ -188,6 +193,26 @@ export function EditRowDialog({
             </label>
           ) : null}
 
+          {quantityDecreased ? (
+            <label className={styles.field}>
+              <span>
+                {t('dlg.adjustmentKind')}<em>{t('common.required')}</em>
+              </span>
+              <select
+                value={reasonType}
+                onChange={(event) =>
+                  setReasonType(event.target.value as 'ITEMS_OUT' | 'DAMAGED' | 'LOST' | '')
+                }
+                required
+              >
+                <option value="">{t('dlg.selectAdjustmentKind')}</option>
+                <option value="ITEMS_OUT">{t('dlg.adjustmentOut')}</option>
+                <option value="DAMAGED">{t('dlg.adjustmentDamaged')}</option>
+                <option value="LOST">{t('dlg.adjustmentLost')}</option>
+              </select>
+            </label>
+          ) : null}
+
           {quantityChanged ? (
             <p className={styles.tally}>
               {balance.quantity} → {Number(quantity)} — recorded as an
@@ -204,7 +229,7 @@ export function EditRowDialog({
             <button
               type="submit"
               className={styles.submit}
-              disabled={!anyChange || needsReason || busy}
+              disabled={!anyChange || needsReason || needsReasonType || busy}
             >
               {busy ? t('common.saving') : t('dlg.saveChanges')}
             </button>

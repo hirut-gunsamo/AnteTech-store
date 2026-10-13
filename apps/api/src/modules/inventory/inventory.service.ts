@@ -329,6 +329,10 @@ export async function adjustBalance(
       data: { quantity: data.quantity },
     });
 
+    const reasonType =
+      difference < 0 ? (data.reasonType ?? "CORRECTION") : "CORRECTION";
+    const reasonPrefix = `[${reasonType}]`;
+
     await tx.stockMovement.create({
       data: {
         productId: balance.productId,
@@ -339,7 +343,7 @@ export async function adjustBalance(
         quantity: Math.abs(difference),
         type: "ADJUSTMENT",
         createdById: performedById,
-        notes: `Corrected ${balance.quantity} → ${data.quantity}. ${data.reason}`,
+        notes: `${reasonPrefix} Corrected ${balance.quantity} → ${data.quantity}. ${data.reason}`,
       },
     });
 

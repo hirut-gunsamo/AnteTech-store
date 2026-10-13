@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
 import { currency, count, shortDate } from '../../lib/format'
-import { useT } from '../../lib/i18n'
+import { useT, type TranslationKey } from '../../lib/i18n'
 import { stockStatus } from '../../lib/stock'
 import type {
   InventoryBalance,
@@ -19,6 +19,20 @@ const STATUS_KEY = {
 // A unit is known by its IMEI or serial number.
 function identifier(unit: InventoryUnit) {
   return unit.serial || '—'
+}
+
+const ADJUSTMENT_REASON: Record<string, TranslationKey> = {
+  ITEMS_OUT: 'dlg.adjustmentOut',
+  DAMAGED: 'dlg.adjustmentDamaged',
+  LOST: 'dlg.adjustmentLost',
+  CORRECTION: 'dlg.adjustmentOther',
+}
+
+function parseReasonTag(notes: string | null): TranslationKey | null {
+  if (!notes) return null
+  const match = notes.match(/^\[(ITEMS_OUT|DAMAGED|LOST|CORRECTION)\]/)
+  if (!match) return null
+  return ADJUSTMENT_REASON[match[1]] ?? null
 }
 
 export function UnitDetails({
@@ -158,6 +172,10 @@ export function UnitDetails({
                     <span className={styles.moveWhen}>
                       {shortDate(move.createdAt)}
                     </span>
+                    {parseReasonTag(move.notes) ? (
+                      <span className={styles.sub}>{t(parseReasonTag(move.notes) as TranslationKey)}</span>
+                    ) : null}
+                    {move.notes ? <span className={styles.sub}>{move.notes.replace(/^\[[A-Z_]+\]\s*/, '')}</span> : null}
                   </li>
                 ))}
               </ul>

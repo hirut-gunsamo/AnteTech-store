@@ -30,19 +30,43 @@ export const createSaleSchema = z.object({
     )
     .min(1, "A sale needs at least one item"),
 
-  // The amount the customer paid, however they paid it.
+  // The amount received in cash.
   cashReceived: z.coerce.number().nonnegative(),
+  // The amount received by transfer (0 unless transfer is used).
+  transferReceived: z.coerce.number().nonnegative().default(0),
 
-  // Cash, or a bank transfer, which names the bank it went to. Sales queued
-  // offline before this existed send neither and are cash.
-  paymentMethod: z.enum(["CASH", "TRANSFER"]).default("CASH"),
+  // Cash only, transfer only, or a split payment.
+  paymentMethod: z
+    .enum(["CASH", "TRANSFER", "CASH_AND_TRANSFER"])
+    .default("CASH"),
   bankName: z.string().trim().min(1).max(80).optional(),
 
   customerNote: z.string().max(500).optional(),
-}).refine((sale) => sale.paymentMethod === "CASH" || Boolean(sale.bankName), {
-  message: "Choose the bank the transfer went to",
-  path: ["bankName"],
-});
+})
+  .refine(
+    (sale) => sale.paymentMethod === "CASH" || Boolean(sale.bankName),
+    {
+      message: "Choose the bank the transfer went to",
+      path: ["bankName"],
+    },
+  )
+  .refine(
+    (sale) => {
+      if (sale.paymentMethod === "CASH") {
+        return sale.cashReceived > 0 && sale.transferReceived === 0;
+      }
+
+      if (sale.paymentMethod === "TRANSFER") {
+        return sale.cashReceived === 0 && sale.transferReceived > 0;
+      }
+
+      return sale.cashReceived > 0 && sale.transferReceived > 0;
+    },
+    {
+      message: "Enter valid received amounts for the selected payment method",
+      path: ["cashReceived"],
+    },
+  );
 
 export const listSalesQuerySchema = z.object({
   status: z

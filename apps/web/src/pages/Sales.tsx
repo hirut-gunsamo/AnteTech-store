@@ -295,7 +295,11 @@ export default function Sales() {
           String(saleItemCount(sale)),
           String(Number(sale.totalAmount)),
           String(Number(sale.cashReceived) + Number(sale.transferReceived)),
-          sale.paymentMethod === 'TRANSFER' ? 'Transfer' : 'Cash',
+          sale.paymentMethod === 'TRANSFER'
+            ? 'Transfer'
+            : sale.paymentMethod === 'CASH_AND_TRANSFER'
+              ? 'Cash + Transfer'
+              : 'Cash',
           sale.bankName ?? '',
           t(STATUS_KEY[sale.status]),
         ]
@@ -700,7 +704,9 @@ export default function Sales() {
                           <small style={{ display: 'block', opacity: 0.7 }}>
                             {sale.paymentMethod === 'TRANSFER'
                               ? `${t('pay.transfer')} · ${sale.bankName ?? ''}`
-                              : t('pay.cash')}
+                              : sale.paymentMethod === 'CASH_AND_TRANSFER'
+                                ? `${t('pay.cashTransfer')} · ${t('pay.cash')}: ${currency(Number(sale.cashReceived))}, ${t('pay.transfer')}: ${currency(Number(sale.transferReceived))}`
+                                : t('pay.cash')}
                           </small>
                         </td>
 
