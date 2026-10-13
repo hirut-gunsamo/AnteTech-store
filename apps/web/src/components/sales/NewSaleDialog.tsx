@@ -226,11 +226,17 @@ export function NewSaleDialog({
   const anyOverStock = priced.some((line) => line.overStock)
   const allValid = priced.every((line) => line.valid) && priced.length > 0
   const allSerialsMatch = priced.every((line) => line.serialsMatch)
-  const cashValue = Number(cashReceived)
   const transferValue = Number(transferReceived)
-  const cashValid = cashReceived.trim() !== '' && Number.isFinite(cashValue) && cashValue >= 0
   const transferValid =
     transferReceived.trim() !== '' && Number.isFinite(transferValue) && transferValue >= 0
+  // Cash + transfer: the seller types the transfer, the cash is the rest.
+  const mixed = method === 'CASH_AND_TRANSFER'
+  const cashValue = mixed
+    ? Math.max(0, Math.round((total - (transferValid ? transferValue : 0)) * 100) / 100)
+    : Number(cashReceived)
+  const cashValid = mixed
+    ? transferValid
+    : cashReceived.trim() !== '' && Number.isFinite(cashValue) && cashValue >= 0
   const receivedTotal =
     (Number.isFinite(cashValue) ? cashValue : 0) +
     (Number.isFinite(transferValue) ? transferValue : 0)
@@ -595,7 +601,7 @@ export function NewSaleDialog({
             )
           ) : null}
 
-          {method !== 'TRANSFER' ? (
+          {method === 'CASH' ? (
             <label className={styles.field}>
               <span>
                 {t('dlg.cashReceived')}<em>{t('common.required')}</em>
@@ -615,7 +621,7 @@ export function NewSaleDialog({
           {method !== 'CASH' ? (
             <label className={styles.field}>
               <span>
-                {t('pay.transferReceived')}<em>{t('common.required')}</em>
+                {mixed ? t('pay.transferPart') : t('pay.transferReceived')}<em>{t('common.required')}</em>
               </span>
               <input
                 type="number"
@@ -623,13 +629,31 @@ export function NewSaleDialog({
                 step="0.01"
                 value={transferReceived}
                 onChange={(event) => setTransferReceived(event.target.value)}
-                placeholder={String(total || '')}
+                placeholder={mixed ? '' : String(total || '')}
                 required
               />
             </label>
           ) : null}
 
-          {(cashValid || transferValid) && receivedTotal < total ? (
+          {mixed ? (
+            <>
+              <label className={styles.field}>
+                <span>{t('pay.cashPart')}</span>
+                <input value={currency(cashValue)} readOnly tabIndex={-1} aria-readonly="true" />
+              </label>
+              {transferValid && transferValue >= total && total > 0 ? (
+                <p className={styles.tally} data-bad="">
+                  {t('pay.transferTooBig')}
+                </p>
+              ) : null}
+              <div className={styles.splitTotal}>
+                <span>{t('dlg.total')}</span>
+                <strong>{currency(total)}</strong>
+              </div>
+            </>
+          ) : null}
+
+          {!mixed && (cashValid || transferValid) && receivedTotal < total ? (
             <p className={styles.tally} data-bad="">
               {t('dlg.shortBy', { amount: currency(total - receivedTotal) })}
             </p>

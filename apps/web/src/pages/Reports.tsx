@@ -5,14 +5,11 @@ import { Card, Empty } from '../components/Card'
 import { ItemBreakdown, type ItemRow } from '../components/reports/ItemBreakdown'
 import { SalesDaysReport } from '../components/reports/SalesDaysReport'
 import { TransferReport } from '../components/reports/TransferReport'
-import { BarList, ColumnChart } from '../components/charts/Charts'
-import { Donut } from '../components/charts/Donut'
 import { DownloadButton } from '../components/DownloadButton'
 import { icons } from '../components/icons'
 import { Toasts } from '../components/Toasts'
 import { api, downloadCsv } from '../lib/api'
 import {
-  CATEGORY_COLORS,
   CATEGORY_KEY,
   CATEGORY_ORDER,
   count,
@@ -582,75 +579,27 @@ export default function Reports() {
     )
   }
 
-  function slicesOf(report: SalesReport | null) {
-    return CATEGORY_ORDER.map((key) => ({
-      key,
-      label: CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key,
-      value: report?.summary.byCategory?.[key]?.revenue ?? 0,
-      color: CATEGORY_COLORS[key] ?? 'var(--series-1)',
-    })).filter((slice) => slice.value > 0)
-  }
-
-  function trendCard(report: SalesReport | null) {
-    return (
-      <Card title={t('rep.salesTrend', { total: currency(report?.summary.revenue ?? 0) })}>
-        {report && report.buckets.length > 0 ? (
-          <ColumnChart
-            data={report.buckets.map((bucket) => ({
-              key: bucket.key,
-              label: bucket.label,
-              value: bucket.revenue,
-            }))}
-            height={220}
-          />
-        ) : (
-          <Empty>{t('rep.noSalesPeriod')}</Empty>
-        )}
-      </Card>
-    )
-  }
-
-  function categoryCard(report: SalesReport | null) {
-    const slices = slicesOf(report)
-
-    return (
-      <Card title={t('rep.byCategory')}>
-        {slices.length > 0 ? (
-          <Donut slices={slices} totalLabel={t('rep.totalSales')} />
-        ) : (
-          <Empty>{t('rep.noSalesPeriod')}</Empty>
-        )}
-      </Card>
-    )
-  }
-
-
   function cashCard(report: CashPositionReport | null) {
     return (
       <Card title={t('rep.cashPosition')}>
-        <BarList
-          data={[
-            {
-              key: 'sold',
-              label: t('rep.sold'),
-              value: report?.totals.sold ?? 0,
-              color: 'var(--series-1)',
-            },
-            {
-              key: 'banked',
-              label: t('rep.banked'),
-              value: report?.totals.banked ?? 0,
-              color: 'var(--success)',
-            },
-            {
-              key: 'inHand',
-              label: t('rep.stillInHand'),
-              value: report?.totals.inHand ?? 0,
-              color: 'var(--warning)',
-            },
-          ]}
-          emptyMessage={t('rep.noCash')}
-        />
+        <div className={styles.scroll}>
+          <table className={styles.table}>
+            <tbody>
+              <tr>
+                <td>{t('rep.sold')}</td>
+                <td className={`${styles.strong} tabular`}>{currency(report?.totals.sold ?? 0)}</td>
+              </tr>
+              <tr>
+                <td>{t('rep.banked')}</td>
+                <td className={`${styles.strong} tabular`}>{currency(report?.totals.banked ?? 0)}</td>
+              </tr>
+              <tr>
+                <td>{t('rep.stillInHand')}</td>
+                <td className={`${styles.strong} tabular`}>{currency(report?.totals.inHand ?? 0)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </Card>
     )
   }
@@ -1099,36 +1048,6 @@ export default function Reports() {
         <>
           {/* One line per seller per day: the report the business reads first. */}
           <SalesDaysReport from={from} to={to} branch={branch} reload={applied} />
-
-          {byStore ? (
-            // Each store's trend and mix on its own, never added together.
-            storeReports.map((store) =>
-              storeSection(
-                store,
-                <div className={styles.storeCharts}>
-                  {trendCard(store.sales)}
-                  {categoryCard(store.sales)}
-                </div>,
-              ),
-            )
-          ) : (
-            <div className={styles.charts}>
-              {trendCard(sales)}
-              {categoryCard(sales)}
-
-              <Card title={t("rep.byBranch")}>
-                <BarList
-                  data={(sales?.byBranch ?? []).map((entry) => ({
-                    key: entry.id,
-                    label: entry.name,
-                    value: entry.revenue,
-                    note: `${count(entry.transactions)} sales`,
-                  }))}
-                  emptyMessage={t("rep.noBranchSales")}
-                />
-              </Card>
-            </div>
-          )}
 
           <Card title={t("rep.branchPerformance")}>
             {(sales?.byBranch ?? []).length === 0 ? (
