@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
+import { UserRole } from "database";
 
-import { authenticate } from "../../middleware/auth.js";
+import { authenticate, authorize } from "../../middleware/auth.js";
+import { getProfitAndLoss } from "./profit.service.js";
 
 import {
   salesReportController,
@@ -35,5 +37,19 @@ export async function reportRoutes(app: FastifyInstance) {
   app.get<{ Querystring: Record<string, string> }>(
     "/inventory",
     inventoryReportController,
+  );
+
+  // Profit and loss: the Owner only. ?from=YYYY-MM-DD &to= &branchId=
+  app.get<{ Querystring: { from?: string; to?: string; branchId?: string } }>(
+    "/profit",
+    { preHandler: [authorize(UserRole.OWNER)] },
+    async (request, reply) => {
+      const day = /^\d{4}-\d{2}-\d{2}$/;
+      const { from, to, branchId } = request.query;
+      if ((from && !day.test(from)) || (to && !day.test(to))) {
+        return reply.status(400).send({ message: "Use YYYY-MM-DD dates" });
+      }
+      return reply.send({ report: await getProfitAndLoss({ from, to, branchId }) });
+    },
   );
 }

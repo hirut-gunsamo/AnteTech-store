@@ -469,6 +469,47 @@ async function main() {
   });
   check("a selling price must be more than zero", overCharger.status === 400, JSON.stringify(overCharger.body));
 
+  // --- Profit and loss ------------------------------------------------------------
+  // A fresh store, so every figure can be worked out by hand.
+  const pStore = (await call(owner, "POST", "/api/branches", { name: `Profit ${RUN}` })).body.branch;
+  const pSeller = (await call(owner, "POST", "/api/users", {
+    name: `Pat ${RUN}`, email: `pat-${RUN}@antetech.local`, password: "password123", phone: "0911 666 666", branchId: pStore.id,
+  })).body.user;
+  const pat = await login(`pat-${RUN}@antetech.local`, "password123");
+  const plItem = (await call(owner, "POST", "/api/products", { typeId: accBrand.id, model: `Earbuds ${RUN}`, price: 150, costPrice: 100 })).body.product;
+  const plBare = (await call(owner, "POST", "/api/products", { typeId: accBrand.id, model: `Strap ${RUN}` })).body.product;
+  await call(owner, "POST", "/api/inventory/stock-in", { productId: plItem.id, locationId: main.id, quantity: 10 });
+  await call(owner, "POST", "/api/inventory/stock-in", { productId: plBare.id, locationId: main.id, quantity: 5 });
+  const toP = (await call(owner, "POST", "/api/transfers", {
+    fromLocationId: main.id, toLocationId: pStore.id,
+    items: [{ productId: plItem.id, quantity: 5 }, { productId: plBare.id, quantity: 2 }], ...driver,
+  })).body.transfer;
+  await call(pat, "PATCH", `/api/transfers/${toP.id}/receive`, {});
+  await call(pat, "POST", "/api/sales", { items: [{ productId: plItem.id, quantity: 2, unitPrice: 180 }], cashReceived: 360 });
+  await call(pat, "POST", "/api/expenses", { amount: 50, reason: "Transport" });
+  await call(owner, "PATCH", `/api/payroll/employees/${pSeller.id}`, { monthlySalary: 1000 });
+  await call(owner, "POST", "/api/deductions", { day: today, userId: pSeller.id, lines: [{ productId: plItem.id, quantity: 1 }] });
+  await call(owner, "POST", "/api/payroll/payments", { userId: pSeller.id, month: thisMonth, bonus: 0, deduction: 150 });
+  await call(owner, "POST", "/api/assets", { locationId: pStore.id, name: "Desk", category: "FURNITURE", cost: 300 });
+
+  const pl = await call(owner, "GET", `/api/reports/profit?from=${today}&to=${today}&branchId=${pStore.id}`);
+  const r = pl.body.report;
+  check("profit and loss: income is what was charged", pl.status === 200 && r?.income?.total === 360, JSON.stringify(pl.body).slice(0, 300));
+  check("profit and loss: goods at their buying price", r?.costs?.goods === 200, JSON.stringify(r?.costs));
+  check("profit and loss: expenses, salaries and equipment", r?.costs?.expenses === 50 && r?.costs?.payroll?.net === 850 && r?.costs?.equipment === 300, JSON.stringify(r?.costs));
+  check("profit and loss: a loss when costs exceed income", r?.profit === -1040, String(r?.profit));
+  check("profit and loss: the store's row matches", r?.byBranch?.find((row) => row.id === pStore.id)?.profit === -1040, JSON.stringify(r?.byBranch));
+
+  await call(owner, "PATCH", `/api/products/${plItem.id}`, { costPrice: 999 });
+  const plAfter = (await call(owner, "GET", `/api/reports/profit?from=${today}&to=${today}&branchId=${pStore.id}`)).body.report;
+  check("a later buying-price change leaves past sales' cost alone", plAfter?.costs?.goods === 200, JSON.stringify(plAfter?.costs));
+
+  await call(pat, "POST", "/api/sales", { items: [{ productId: plBare.id, quantity: 1, unitPrice: 90 }], cashReceived: 90 });
+  const plBareReport = (await call(owner, "GET", `/api/reports/profit?from=${today}&to=${today}&branchId=${pStore.id}`)).body.report;
+  check("items sold with no buying price are counted apart", plBareReport?.uncosted?.quantity === 1 && plBareReport?.uncosted?.revenue === 90, JSON.stringify(plBareReport?.uncosted));
+  const sellerPl = await call(pat, "GET", "/api/reports/profit");
+  check("a seller cannot open profit and loss", sellerPl.status === 403);
+
   console.log(`\n${failures === 0 ? "All checks passed" : `${failures} check(s) failed`}`);
   process.exit(failures);
 }

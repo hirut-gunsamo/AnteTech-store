@@ -231,6 +231,7 @@ async function main() {
     ["/api/payroll/employees", "the payroll staff"],
     ["/api/payroll/commissions", "commission payments"],
     ["/api/payroll/sold", "sales counts for commission"],
+    ["/api/reports/profit", "profit and loss"],
   ];
 
   for (const [url, what] of direct) {
