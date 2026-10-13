@@ -33,8 +33,9 @@ export function ProductDialog({
     ? categoryId
     : (categories[0]?.id ?? '')
   const chosenCategory = categories.find((entry) => entry.id === validCategoryId) ?? null
-  // Phones go brand, then model; accessories go straight to the model.
+  // Phones also take a brand, storage and colour.
   const isPhone = chosenCategory?.kind === 'SERIALIZED'
+  const [brand, setBrand] = useState('')
   const [price, setPrice] = useState('')
   // What the business pays for one, for profit and loss. Owner only.
   const [costPrice, setCostPrice] = useState('')
@@ -140,17 +141,11 @@ export function ProductDialog({
   const valid =
     priceValid &&
     costValid &&
-    (isPhone ? validTypeId !== '' : validCategoryId !== '') &&
+    validTypeId !== '' &&
     phoneModel.trim() !== ''
 
-  // A phone is named by brand and model ("Infinix Hot 40"), an accessory by
-  // category and model ("Glass pop 8"). A model that already starts with
-  // that word is not doubled.
+  // The model the Owner types is the product's name, exactly as typed.
   const model = phoneModel.trim()
-  const prefix = (isPhone ? selectedBrand?.name : chosenCategory?.name) ?? ''
-  const fullName = !prefix || model.toLowerCase().startsWith(prefix.toLowerCase())
-    ? model
-    : `${prefix} ${model}`
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -160,8 +155,9 @@ export function ProductDialog({
     setError(null)
 
     const body = {
-      ...(isPhone ? { typeId: validTypeId } : { categoryId: validCategoryId }),
-      name: fullName,
+      typeId: validTypeId,
+      name: model,
+      ...(isPhone && brand.trim() ? { brand: brand.trim() } : {}),
       ...(price.trim() !== '' ? { price: priceValue } : {}),
       ...(costPrice.trim() !== '' ? { costPrice: Number(costPrice) } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
@@ -207,7 +203,14 @@ export function ProductDialog({
           </button>
         </header>
 
-        <form className={styles.body} onSubmit={handleSubmit}>
+        <form
+          className={styles.body}
+          onSubmit={handleSubmit}
+          // Enter in a field moves on rather than saving: only the button saves.
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && (event.target as HTMLElement).tagName === 'INPUT') event.preventDefault()
+          }}
+        >
           <label className={styles.field}>
             <span>{t('prod.category')}</span>
             <div className={styles.withAdd}>
@@ -229,10 +232,9 @@ export function ProductDialog({
             </div>
           </label>
 
-          {isPhone ? (
-            <label className={styles.field}>
+          <label className={styles.field}>
               <span>
-                {t('prod.brand')}
+                {t('prod.typeName')}
                 <em>{t('common.required')}</em>
               </span>
               <div className={styles.withAdd}>
@@ -273,7 +275,6 @@ export function ProductDialog({
               ) : null}
             </div>
           </label>
-          ) : null}
 
           <label className={styles.field}>
             <span>
@@ -286,10 +287,22 @@ export function ProductDialog({
               maxLength={80}
               required
             />
-            <small className={styles.hint}>
-              {model ? t('prod.savedAs', { name: fullName }) : t('prod.modelNote')}
-            </small>
+            <small className={styles.hint}>{t('prod.modelNote')}</small>
           </label>
+
+          {isPhone ? (
+            <label className={styles.field}>
+              <span>
+                {t('prod.brand')}<em>{t('prod.optional')}</em>
+              </span>
+              <input
+                value={brand}
+                onChange={(event) => setBrand(event.target.value)}
+                placeholder={t('prod.phBrand')}
+                maxLength={60}
+              />
+            </label>
+          ) : null}
 
           <label className={styles.field}>
             <span>

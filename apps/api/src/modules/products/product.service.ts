@@ -132,7 +132,7 @@ export async function createProduct(data: CreateProductInput) {
           await tx.phoneProduct.create({
             data: {
               productId: product.id,
-              brand: path[0] ?? "",
+              brand: data.brand?.trim() || (path[0] ?? ""),
               model:
                 data.model?.trim() ||
                 path.slice(1).join(" ") ||
@@ -217,7 +217,7 @@ export async function getProducts(viewer: Viewer) {
 async function liveProduct(id: string) {
   const product = await prisma.product.findUnique({
     where: { id },
-    select: { id: true, status: true, category: true },
+    select: { id: true, status: true, category: true, categoryId: true },
   });
 
   if (!product || product.status !== "ACTIVE") {
@@ -233,11 +233,24 @@ export async function updateProduct(id: string, data: UpdateProductInput) {
   const isSerialized = product.category === "SERIALIZED";
   const price = data.price;
 
+  // A new type must be a live type of the same category, so stock and sales
+  // stay counted under the same kind of goods.
+  if (data.typeId) {
+    const type = await prisma.productType.findUnique({
+      where: { id: data.typeId },
+      select: { categoryId: true, isActive: true },
+    });
+    if (!type || !type.isActive || type.categoryId !== product.categoryId) {
+      throw new Error("TYPE_NOT_FOUND");
+    }
+  }
+
   return prisma.$transaction(async (tx) => {
     await tx.product.update({
       where: { id },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.typeId ? { typeId: data.typeId } : {}),
         ...(data.description !== undefined
           ? { description: data.description?.trim() || null }
           : {}),
@@ -249,6 +262,7 @@ export async function updateProduct(id: string, data: UpdateProductInput) {
     if (
       isSerialized &&
       (data.model !== undefined ||
+        data.brand !== undefined ||
         data.storage !== undefined ||
         data.color !== undefined)
     ) {
@@ -256,6 +270,7 @@ export async function updateProduct(id: string, data: UpdateProductInput) {
         where: { productId: id },
         data: {
           ...(data.model !== undefined ? { model: data.model } : {}),
+          ...(data.brand !== undefined ? { brand: data.brand?.trim() || "" } : {}),
           ...(data.storage !== undefined
             ? { storage: data.storage?.trim() || null }
             : {}),

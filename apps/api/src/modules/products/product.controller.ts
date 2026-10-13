@@ -131,6 +131,10 @@ export async function updateProductController(
       return reply.status(404).send({ message: "Product not found" });
     }
 
+    if (error instanceof Error && error.message === "TYPE_NOT_FOUND") {
+      return reply.status(400).send({ message: "Choose a type from this product's category" });
+    }
+
     throw error;
   }
 }
