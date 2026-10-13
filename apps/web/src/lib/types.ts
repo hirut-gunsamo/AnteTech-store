@@ -447,6 +447,7 @@ export type StockRequest = {
     vehiclePlate: string | null
     shippedAt: string | null
     receivedAt: string | null
+    receivedBy?: { id: string; name: string } | null
     fromLocation: { id: string; name: string } | null
     toLocation: { id: string; name: string } | null
   } | null

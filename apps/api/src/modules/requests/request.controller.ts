@@ -20,6 +20,7 @@ import {
   rejectRequest,
   cancelRequest,
   decideRequestItems,
+  deleteRequest,
 } from "./request.service.js";
 
 type RequestParams = {
@@ -384,5 +385,20 @@ export async function decideRequestItemsController(
     return (
       handleRequestError(error, reply) ?? Promise.reject(error)
     );
+  }
+}
+
+export async function deleteRequestController(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  const viewer = await withViewer(request, reply);
+  if (!viewer) return reply;
+
+  try {
+    await deleteRequest(request.params.id, viewer);
+    return reply.send({ message: "Request deleted" });
+  } catch (error) {
+    return handleRequestError(error, reply) ?? Promise.reject(error);
   }
 }

@@ -313,6 +313,28 @@ export default function Requests() {
     }
   }
 
+  // A seller may remove only their own request that is still waiting.
+  const canDelete = (request: StockRequest) =>
+    isOwner || (request.requestedBy.id === user?.id && request.status === 'PENDING')
+
+  async function removeRequests(list: StockRequest[]) {
+    if (list.length === 0) return
+    if (!window.confirm(t('req.deleteConfirm', { n: count(list.length) }))) return
+    setOpenMenu(null)
+    let done = 0
+    for (const request of list) {
+      try {
+        await api(`/api/requests/${request.id}`, { method: 'DELETE' })
+        done += 1
+      } catch (caught) {
+        push('error', `${requestRef(request)}: ${caught instanceof Error ? caught.message : 'Failed.'}`)
+      }
+    }
+    if (done > 0) push('success', t('req.deleted', { n: count(done) }))
+    setSelected(new Set())
+    setReloadKey((n) => n + 1)
+  }
+
   async function act(
     request: StockRequest,
     action: 'reject' | 'cancel',
@@ -665,7 +687,17 @@ export default function Requests() {
                     <th scope="col">{t('req.items')}</th>
                     <th scope="col">{t('common.status')}</th>
                     <th scope="col" className={styles.actionsCol}>
-                      {t('common.actions')}
+                      {/* With rows ticked, the header offers to delete them. */}
+                      {(() => {
+                        const ticked = filtered.filter((request) => selected.has(request.id) && canDelete(request))
+                        return ticked.length > 0 ? (
+                          <button type="button" className={styles.bulkDelete} onClick={() => void removeRequests(ticked)}>
+                            {t('req.deleteN', { n: count(ticked.length) })}
+                          </button>
+                        ) : (
+                          t('common.actions')
+                        )
+                      })()}
                     </th>
                   </tr>
                 </thead>
@@ -742,6 +774,14 @@ export default function Requests() {
                           >
                             {t(REQUEST_STATUS_KEY[request.status])}
                           </span>
+                          {request.transfer?.receivedAt ? (
+                            <em className={styles.statusNote}>
+                              {t('req.receivedBy', {
+                                name: request.transfer.receivedBy?.name ?? '—',
+                                date: shortDate(request.transfer.receivedAt),
+                              })}
+                            </em>
+                          ) : null}
                         </td>
 
                         <td
@@ -808,6 +848,17 @@ export default function Requests() {
                                     onClick={() => void act(request, 'cancel')}
                                   >
                                     {t('req.cancelAction')}
+                                  </button>
+                                ) : null}
+
+                                {canDelete(request) ? (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className={styles.menuDanger}
+                                    onClick={() => void removeRequests([request])}
+                                  >
+                                    {t('prod.delete')}
                                   </button>
                                 ) : null}
                               </div>
