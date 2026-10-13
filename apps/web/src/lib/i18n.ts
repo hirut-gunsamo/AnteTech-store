@@ -1299,6 +1299,8 @@ export const en = {
   'pay.salarySaved': '{name}: monthly salary saved.',
   'asset.editTitle': 'Edit equipment',
   'asset.editNote': 'Correct what was recorded. The item stays at its store.',
+  'prod.costPrice': 'Buying price',
+  'prod.costPriceNote': 'What you pay for one. Only you see it; it is used for profit and loss.',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2564,6 +2566,8 @@ export const am: Record<TranslationKey, string> = {
   'pay.salarySaved': '{name}፦ ወርሃዊ ደመወዝ ተቀምጧል።',
   'asset.editTitle': 'ዕቃ አርም',
   'asset.editNote': 'የተመዘገበውን ያስተካክሉ። ዕቃው በመደብሩ ይቆያል።',
+  'prod.costPrice': 'የግዢ ዋጋ',
+  'prod.costPriceNote': 'ለአንዱ የሚከፍሉት ዋጋ። እርስዎ ብቻ ያዩታል፤ ለትርፍና ኪሳራ ይጠቅማል።',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }

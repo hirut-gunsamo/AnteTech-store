@@ -27,6 +27,9 @@ export function EditProductDialog({
 
   const [name, setName] = useState(product.name)
   const [price, setPrice] = useState(String(Number(product.price)))
+  const [costPrice, setCostPrice] = useState(
+    product.costPrice == null ? '' : String(Number(product.costPrice)),
+  )
   const [phoneModel, setPhoneModel] = useState(product.phoneDetails?.model ?? '')
   const [storage, setStorage] = useState(product.phoneDetails?.storage ?? '')
   const [color, setColor] = useState(product.phoneDetails?.color ?? '')
@@ -50,7 +53,8 @@ export function EditProductDialog({
     name.trim().length >= 2 &&
     price.trim() !== '' &&
     Number.isFinite(priceValue) &&
-    priceValue >= 0
+    priceValue >= 0 &&
+    (costPrice.trim() === '' || (Number.isFinite(Number(costPrice)) && Number(costPrice) >= 0))
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -64,6 +68,8 @@ export function EditProductDialog({
       name: name.trim(),
       description: description.trim() || null,
       price: priceValue,
+      // Blank clears a buying price typed by mistake.
+      costPrice: costPrice.trim() === '' ? null : Number(costPrice),
       ...(isPhone
         ? {
             model: phoneModel.trim() || undefined,
@@ -139,6 +145,21 @@ export function EditProductDialog({
               onChange={(event) => setPrice(event.target.value)}
               required
             />
+          </label>
+
+          <label className={styles.field}>
+            <span>
+              {t('prod.costPrice')}<em>{t('prod.optional')}</em>
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={costPrice}
+              onChange={(event) => setCostPrice(event.target.value)}
+            />
+            <small className={styles.hint}>{t('prod.costPriceNote')}</small>
           </label>
 
 
