@@ -7,8 +7,11 @@
   max-width: 360px;
 }
 
-/* Above a list, with no filter bar to sit in. */
+/* Above a list, with no filter bar to sit in: its own height, not a
+   share of a column layout. */
 .alone {
+  flex: none;
+  width: 100%;
   margin-bottom: 14px;
 }
 
