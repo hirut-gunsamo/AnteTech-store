@@ -195,9 +195,8 @@ export default function Reports() {
   // three reports, and a date range is half-typed most of the time.
   const [applied, setApplied] = useState(0)
 
-  // The Owner's "All stores" shows each selling store on its own, never one
-  // sum of them: every store gets its own figures, charts and cash book.
-  const byStore = user?.role === 'OWNER' && branch === 'ALL'
+  // Owner uses one unified report view; do not split into per-store sections.
+  const byStore = false
 
   const { toasts, push, dismiss } = useToasts()
   const t = useT()
