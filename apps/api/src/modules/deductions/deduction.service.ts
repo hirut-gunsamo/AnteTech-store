@@ -66,8 +66,12 @@ export async function createDeduction(
     const product = byId.get(line.productId);
     if (!product) throw new Error("PRODUCT_NOT_FOUND");
 
-    const unitPrice = product.price.toNumber();
-    const amount = line.amount ?? unitPrice * line.quantity;
+    // The suggested selling price prices the line, unless an amount was
+    // entered; a product with no suggested price needs the amount.
+    const suggested = product.price?.toNumber() ?? null;
+    if (line.amount === undefined && suggested === null) throw new Error("AMOUNT_REQUIRED");
+    const amount = line.amount ?? suggested! * line.quantity;
+    const unitPrice = suggested ?? amount / line.quantity;
 
     return {
       productId: product.id,

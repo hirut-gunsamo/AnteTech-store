@@ -286,7 +286,7 @@ export function StockInDialog({
                   </div>
                   <div>
                     <dt>{t('prod.price')}</dt>
-                    <dd className="tabular">{currency(Number(product.price))}</dd>
+                    <dd className="tabular">{product.price == null ? "—" : currency(Number(product.price))}</dd>
                   </div>
                   <div>
                     <dt>{t('prod.inStock')}</dt>

@@ -448,6 +448,27 @@ async function main() {
     backupText.slice(0, 200),
   );
 
+  // --- Selling price is set at the sale --------------------------------------
+  // A product needs no fixed selling price; the seller enters what the
+  // customer actually paid.
+  const loose = await call(owner, "POST", "/api/products", { typeId: accBrand.id, model: `Case ${RUN}` });
+  check("a product can have no fixed selling price", loose.status === 201 && loose.body.product?.price == null, JSON.stringify(loose.body).slice(0, 200));
+  await call(owner, "POST", "/api/inventory/stock-in", { productId: loose.body.product.id, locationId: main.id, quantity: 4 });
+  const toACases = (await call(owner, "POST", "/api/transfers", {
+    fromLocationId: main.id, toLocationId: storeA.id, items: [{ productId: loose.body.product.id, quantity: 4 }], ...driver,
+  })).body.transfer;
+  await call(a, "PATCH", `/api/transfers/${toACases.id}/receive`, {});
+  const noPrice = await call(a, "POST", "/api/sales", { items: [{ productId: loose.body.product.id, quantity: 1 }], cashReceived: 0, paymentMethod: "TRANSFER", bankName: "Telebirr" });
+  check("a sale needs a price when the product has none", noPrice.status === 400, JSON.stringify(noPrice.body));
+  const pricedSale = await call(a, "POST", "/api/sales", {
+    items: [{ productId: loose.body.product.id, quantity: 2, unitPrice: 325 }], cashReceived: 650, paymentMethod: "TRANSFER", bankName: "Telebirr",
+  });
+  check("the seller's price is what the sale records", pricedSale.status === 201 && Number(pricedSale.body.sale?.totalAmount) === 650, JSON.stringify(pricedSale.body).slice(0, 200));
+  const overCharger = await call(a, "POST", "/api/sales", {
+    items: [{ productId: loose.body.product.id, quantity: 1, unitPrice: 0 }], cashReceived: 0, paymentMethod: "TRANSFER", bankName: "Telebirr",
+  });
+  check("a selling price must be more than zero", overCharger.status === 400, JSON.stringify(overCharger.body));
+
   console.log(`\n${failures === 0 ? "All checks passed" : `${failures} check(s) failed`}`);
   process.exit(failures);
 }

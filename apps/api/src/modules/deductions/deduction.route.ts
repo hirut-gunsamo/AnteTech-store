@@ -22,6 +22,7 @@ const createSchema = z.object({
 
 const MESSAGES: Record<string, [number, string]> = {
   EMPLOYEE_REQUIRED: [400, "Choose whose deduction this is"],
+  AMOUNT_REQUIRED: [400, "This item has no set price; enter the amount"],
   PRODUCT_NOT_FOUND: [400, "One of the items no longer exists"],
   NOT_FOUND: [404, "Not found"],
   ALREADY_PAID: [409, "That month's salary is already paid, so this deduction is part of it. Ask the Owner."],

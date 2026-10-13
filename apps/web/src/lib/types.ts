@@ -310,8 +310,9 @@ export type ProductRow = {
   name: string
   category: string
   description: string | null
-  /** Prisma serialises Decimal as a string. */
-  price: string
+  /** A suggested selling price, or null: the real price is entered at each
+   * sale. Prisma serialises Decimal as a string. */
+  price: string | null
   /** What the business pays for one. Sent to the Owner only; null when not set. */
   costPrice?: string | null
   status: ProductStatus

@@ -68,6 +68,11 @@ function handleSaleError(
         message: "One or more products are unknown or inactive",
       });
 
+    case "PRICE_REQUIRED":
+      return reply.status(400).send({
+        message: "Enter the selling price for every item",
+      });
+
     case "INSUFFICIENT_STOCK":
       return reply.status(409).send({
         message:
