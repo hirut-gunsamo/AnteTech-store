@@ -32,6 +32,9 @@ export function ProductDialog({
   const validCategoryId = categories.some((entry) => entry.id === categoryId)
     ? categoryId
     : (categories[0]?.id ?? '')
+  const chosenCategory = categories.find((entry) => entry.id === validCategoryId) ?? null
+  // Phones go brand, then model; accessories go straight to the model.
+  const isPhone = chosenCategory?.kind === 'SERIALIZED'
   const [price, setPrice] = useState('')
   // What the business pays for one, for profit and loss. Owner only.
   const [costPrice, setCostPrice] = useState('')
@@ -137,17 +140,17 @@ export function ProductDialog({
   const valid =
     priceValid &&
     costValid &&
-    validTypeId !== '' &&
+    (isPhone ? validTypeId !== '' : validCategoryId !== '') &&
     phoneModel.trim() !== ''
 
-  // Every product is filed under its type (Privacy glass, Infinix); its name
-  // is the type and the model the Owner types: "Infinix Hot 40". A model
-  // that already starts with the type is not doubled.
-  const effectiveTypeId = validTypeId
+  // A phone is named by brand and model ("Infinix Hot 40"), an accessory by
+  // category and model ("Glass pop 8"). A model that already starts with
+  // that word is not doubled.
   const model = phoneModel.trim()
-  const fullName = !selectedBrand || model.toLowerCase().startsWith(selectedBrand.name.toLowerCase())
+  const prefix = (isPhone ? selectedBrand?.name : chosenCategory?.name) ?? ''
+  const fullName = !prefix || model.toLowerCase().startsWith(prefix.toLowerCase())
     ? model
-    : `${selectedBrand.name} ${model}`
+    : `${prefix} ${model}`
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -157,7 +160,7 @@ export function ProductDialog({
     setError(null)
 
     const body = {
-      typeId: effectiveTypeId,
+      ...(isPhone ? { typeId: validTypeId } : { categoryId: validCategoryId }),
       name: fullName,
       ...(price.trim() !== '' ? { price: priceValue } : {}),
       ...(costPrice.trim() !== '' ? { costPrice: Number(costPrice) } : {}),
@@ -226,23 +229,24 @@ export function ProductDialog({
             </div>
           </label>
 
-          <label className={styles.field}>
-            <span>
-              {t('prod.typeName')}
-              <em>{t('common.required')}</em>
-            </span>
-            <div className={styles.withAdd}>
-              <select
-                value={validTypeId}
-                onChange={(event) => {
-                  setTypeId(event.target.value)
-                }}
-                disabled={topLevel.length === 0}
-                required
-              >
-                {topLevel.length === 0 ? (
-                  <option value="">{t('prod.noTypes')}</option>
-                ) : null}
+          {isPhone ? (
+            <label className={styles.field}>
+              <span>
+                {t('prod.brand')}
+                <em>{t('common.required')}</em>
+              </span>
+              <div className={styles.withAdd}>
+                <select
+                  value={validTypeId}
+                  onChange={(event) => {
+                    setTypeId(event.target.value)
+                  }}
+                  disabled={topLevel.length === 0}
+                  required
+                >
+                  {topLevel.length === 0 ? (
+                    <option value="">{t('prod.noTypes')}</option>
+          ) : null}
                 {topLevel.map((node) => (
                   <option key={node.id} value={node.id}>
                     {node.name}
@@ -269,6 +273,7 @@ export function ProductDialog({
               ) : null}
             </div>
           </label>
+          ) : null}
 
           <label className={styles.field}>
             <span>
@@ -316,7 +321,7 @@ export function ProductDialog({
             <small className={styles.hint}>{t('prod.costPriceNote')}</small>
           </label>
 
-          {validTypeId ? (
+          {isPhone && validTypeId ? (
             <>
               <label className={styles.field}>
                 <span>
