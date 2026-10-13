@@ -331,11 +331,11 @@
   background: var(--surface-2);
 }
 
-.menuDanger {
+.menu .menuDanger {
   color: var(--danger);
 }
 
-.menuDanger:hover {
+.menu .menuDanger:hover {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 

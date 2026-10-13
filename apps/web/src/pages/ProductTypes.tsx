@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Card, Empty } from '../components/Card'
+import { icons } from '../components/icons'
 import { SearchBox } from '../components/SearchBox'
 import { TypeDialog } from '../components/products/TypeDialog'
 import { Toasts } from '../components/Toasts'
@@ -86,26 +87,86 @@ export default function ProductTypes() {
       node.name
     )
 
-  const actionsOf = (node: TypeNode) =>
-    editing?.id === node.id ? (
-      <span className={styles.rowActions}>
-        <button type="button" className={styles.edit} onClick={() => void rename()} disabled={savingName}>
-          {t('common.save')}
+  // One ⋯ menu per row, as on Products. A phone row can hold both its brand
+  // and its model, so its menu names which one each action is for.
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!openMenu) return
+    function onDown(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setOpenMenu(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [openMenu])
+
+  const actionsOf = (rowKey: string, nodes: { node: TypeNode; edit: string; remove: string }[]) => {
+    const being = nodes.find((entry) => entry.node.id === editing?.id)
+    if (being) {
+      return (
+        <span className={styles.rowActions}>
+          <button type="button" className={styles.edit} onClick={() => void rename()} disabled={savingName}>
+            {t('common.save')}
+          </button>
+          <button type="button" className={styles.edit} onClick={() => setEditing(null)}>
+            {t('common.cancel')}
+          </button>
+        </span>
+      )
+    }
+
+    return (
+      <div className={base.menuWrap}>
+        <button
+          className={base.iconButton}
+          type="button"
+          aria-label={t('a11y.actionsFor', { name: nodes.map((entry) => entry.node.name).join(' · ') })}
+          aria-haspopup="menu"
+          aria-expanded={openMenu === rowKey}
+          onClick={() => setOpenMenu(openMenu === rowKey ? null : rowKey)}
+        >
+          <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeLinecap="round" aria-hidden="true">
+            {icons.more.map((d, index) => (
+              <path key={index} d={d} />
+            ))}
+          </svg>
         </button>
-        <button type="button" className={styles.edit} onClick={() => setEditing(null)}>
-          {t('common.cancel')}
-        </button>
-      </span>
-    ) : (
-      <span className={styles.rowActions}>
-        <button type="button" className={styles.edit} onClick={() => setEditing({ id: node.id, draft: node.name })}>
-          {t('prod.edit')}
-        </button>
-        <button type="button" className={styles.remove} onClick={() => void remove(node)}>
-          {t('prod.delete')}
-        </button>
-      </span>
+
+        {openMenu === rowKey ? (
+          <div className={base.menu} role="menu" ref={menuRef}>
+            {nodes.map(({ node, edit }) => (
+              <button
+                key={`edit-${node.id}`}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setEditing({ id: node.id, draft: node.name })
+                  setOpenMenu(null)
+                }}
+              >
+                {edit}
+              </button>
+            ))}
+            {nodes.map(({ node, remove: label }) => (
+              <button
+                key={`delete-${node.id}`}
+                type="button"
+                role="menuitem"
+                className={base.menuDanger}
+                onClick={() => {
+                  setOpenMenu(null)
+                  void remove(node)
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     )
+  }
 
   async function remove(node: TypeNode) {
     if (!window.confirm(t('prod.deleteTypeConfirm', { name: node.name }))) return
@@ -197,7 +258,9 @@ export default function ProductTypes() {
                               {nameOf(root)}
                             </td>
                             {isPhone ? <td>—</td> : null}
-                            <td className={base.actionsCol}>{actionsOf(root)}</td>
+                            <td className={base.actionsCol}>
+                              {actionsOf(root.id, [{ node: root, edit: t('prod.edit'), remove: t('prod.delete') }])}
+                            </td>
                           </tr>,
                         ]
                       }
@@ -209,8 +272,12 @@ export default function ProductTypes() {
                           </td>
                           <td data-label={t('prod.typeName')}>{nameOf(child)}</td>
                           <td className={base.actionsCol}>
-                            {index === 0 ? actionsOf(root) : null}
-                            {actionsOf(child)}
+                            {actionsOf(child.id, [
+                              ...(index === 0
+                                ? [{ node: root, edit: t('types.editBrand'), remove: t('types.deleteBrand') }]
+                                : []),
+                              { node: child, edit: t('types.editModel'), remove: t('types.deleteModel') },
+                            ])}
                           </td>
                         </tr>
                       ))
