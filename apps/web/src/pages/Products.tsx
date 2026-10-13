@@ -18,12 +18,24 @@ import { useToasts } from '../lib/toasts'
 import type { ProductRow } from '../lib/types'
 import styles from './Products.module.css'
 
-
-/** The one line that says what this product actually is. */
-function detailOf(product: ProductRow): string {
+/**
+ * A product's model: a phone's model with its storage and colour, or what
+ * follows the category in an accessory's name ("Glass pop 8" is "pop 8").
+ * Older names that do not start with the category have no separate model.
+ */
+function modelOf(product: ProductRow): string {
   if (product.phoneDetails) {
     const { brand, model, storage, color } = product.phoneDetails
-    return [brand, model, storage, color].filter(Boolean).join(' · ')
+    // Older phones kept the brand in the model: "Tecno Spark 30".
+    const bare =
+      brand && model?.toLowerCase().startsWith(`${brand.toLowerCase()} `) ? model.slice(brand.length).trim() : model
+    return [bare === brand ? null : bare, storage, color].filter(Boolean).join(' · ') || '—'
+  }
+
+  const prefix = product.productCategory?.name ?? ''
+  const name = product.name.trim()
+  if (prefix && name.toLowerCase().startsWith(`${prefix.toLowerCase()} `)) {
+    return name.slice(prefix.length).trim()
   }
 
   return '—'
@@ -182,10 +194,10 @@ export default function Products() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th scope="col">{t('prod.name')}</th>
                   <th scope="col">{t('prod.category')}</th>
+                  <th scope="col">{t('prod.name')}</th>
                   {showBrand ? <th scope="col">{t('prod.brand')}</th> : null}
-                  <th scope="col">{t('prod.details')}</th>
+                  <th scope="col">{t('prod.model')}</th>
                   <th scope="col">{t('prod.price')}</th>
                   <th scope="col">{t('prod.costPrice')}</th>
                   <th scope="col">{t('prod.inStock')}</th>
@@ -202,14 +214,14 @@ export default function Products() {
 
                   return (
                     <tr key={product.id}>
+                      <td data-label={t('prod.category')}>
+                        {product.productCategory?.name ?? '—'}
+                      </td>
                       <td data-label={t('prod.name')} className={styles.strong}>
                         {product.name}
                         {product.description ? (
                           <em className={styles.sub}>{product.description}</em>
                         ) : null}
-                      </td>
-                      <td data-label={t('prod.category')}>
-                        {product.productCategory?.name ?? '—'}
                       </td>
                       {showBrand ? (
                         <td data-label={t('prod.brand')}>
@@ -218,7 +230,7 @@ export default function Products() {
                             : '—'}
                         </td>
                       ) : null}
-                      <td data-label={t('prod.details')}>{detailOf(product)}</td>
+                      <td data-label={t('prod.model')}>{modelOf(product)}</td>
                       <td data-label={t('prod.price')} className="tabular">
                         {product.price == null ? '—' : currency(Number(product.price))}
                       </td>
