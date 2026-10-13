@@ -1410,6 +1410,10 @@ export const en = {
   'dlg.qtyAll': '{n} (all)',
   'dlg.qtyNone': '0 (none)',
   'dlg.qtyOver': '{n} (not in stock)',
+  'prod.quantity': 'Quantity',
+  'prod.quantityNote': 'How many you have now. They go into the Main Store.',
+  'prod.noMainStore': 'There is no Main Store.',
+  'prod.quantityFailed': 'The product was saved, but the quantity was not added: {reason}. Add it from Inventory.',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2786,6 +2790,10 @@ export const am: Record<TranslationKey, string> = {
   'dlg.qtyAll': '{n} (ሁሉም)',
   'dlg.qtyNone': '0 (ምንም)',
   'dlg.qtyOver': '{n} (በክምችት የለም)',
+  'prod.quantity': 'ብዛት',
+  'prod.quantityNote': 'አሁን ያለዎት ብዛት። ወደ ዋና መጋዘን ይገባል።',
+  'prod.noMainStore': 'ዋና መጋዘን የለም።',
+  'prod.quantityFailed': 'ምርቱ ተቀምጧል፣ ግን ብዛቱ አልተጨመረም፦ {reason}። ከክምችት ያስገቡት።',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
