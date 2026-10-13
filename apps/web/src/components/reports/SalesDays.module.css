@@ -177,34 +177,79 @@
   cursor: pointer;
 }
 
-.detail td {
-  background: color-mix(in srgb, var(--brand) 5%, var(--surface)) !important;
-  white-space: normal;
+
+.clickable[data-open] td {
+  background: color-mix(in srgb, var(--brand) 6%, var(--surface)) !important;
 }
 
-.detail ul {
+/* ---------- A day, opened on the right ---------- */
+.dayFigures {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.dayFigures > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  font-size: 13.5px;
+}
+
+.dayFigures dt {
+  color: var(--text-2);
+}
+
+.dayFigures dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dayFigures dd.minus {
+  color: var(--danger);
+}
+
+.dayNet {
+  background: color-mix(in srgb, var(--brand) 8%, var(--surface)) !important;
+}
+
+.dayNet dt,
+.dayNet dd {
+  font-weight: 700;
+  color: var(--brand-text) !important;
+  font-size: 15px;
+}
+
+.dayItemsTitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.dayItems {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 6px;
 }
 
-.detail li {
+.dayItems li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 14px;
+  gap: 12px;
   align-items: baseline;
-  font-size: 13px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
 }
 
-.detail li strong {
-  display: inline;
-}
-
-@media (max-width: 720px) {
-  .table tbody tr.detail {
-    display: block;
-    margin-top: -6px;
-  }
+.dayItems li span:nth-child(2) {
+  color: var(--muted);
+  font-size: 12.5px;
 }
