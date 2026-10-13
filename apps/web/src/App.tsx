@@ -58,12 +58,8 @@ function Protected() {
   )
 }
 
-/** Sales is the sellers' page; the Owner reads sales on Reports. */
+/** Sellers record sales here; the Owner reads every store's and can delete them. */
 function SalesRoute() {
-  const { user } = useAuth()
-
-  if (user?.role === 'OWNER') return <Navigate to="/reports" replace />
-
   return <Sales />
 }
 

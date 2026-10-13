@@ -72,7 +72,7 @@ const NAV: NavItem[] = [
     ],
   },
   // Sellers only: the Owner reads sales on Reports.
-  { to: '/sales', labelKey: 'nav.sales', noteKey: 'sales.note', icon: 'cart', roles: ['SALES'], primary: true },
+  { to: '/sales', labelKey: 'nav.sales', noteKey: 'sales.note', icon: 'cart', roles: ['SALES', 'OWNER'], primary: true },
   { to: '/requests', labelKey: 'nav.requests', icon: 'clipboard', roles: ['OWNER', 'SALES'], primary: true },
   // In the Owner's phone tab bar, where sellers have Sales.
   { to: '/approvals', labelKey: 'nav.approvals', icon: 'check', roles: ['OWNER'], primary: true },
