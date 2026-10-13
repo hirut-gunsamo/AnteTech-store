@@ -49,22 +49,47 @@ async function freeSku(base: string): Promise<string> {
   throw new Error("SKU_EXHAUSTED");
 }
 
-export async function createProduct(data: CreateProductInput) {
-  const { category, path } = await pathOf(data.typeId);
+/** What a new product is filed under: its type, or only its category. */
+async function placeOf(data: CreateProductInput) {
+  if (data.typeId) {
+    const { category, path } = await pathOf(data.typeId);
 
-  // A retired type keeps its old products readable but takes no new ones.
-  const chosen = await prisma.productType.findUnique({
-    where: { id: data.typeId },
-    select: {
-      isActive: true,
-      categoryId: true,
-      productCategory: { select: { name: true } },
-    },
+    // A retired type keeps its old products readable but takes no new ones.
+    const chosen = await prisma.productType.findUnique({
+      where: { id: data.typeId },
+      select: {
+        isActive: true,
+        categoryId: true,
+        productCategory: { select: { name: true } },
+      },
+    });
+
+    if (!chosen?.isActive) {
+      throw new Error("TYPE_INACTIVE");
+    }
+
+    return { category, path, chosen, typeId: data.typeId };
+  }
+
+  // An accessory goes straight under its category: Glass, then the model.
+  const found = await prisma.category.findUnique({
+    where: { id: data.categoryId ?? "" },
+    select: { id: true, name: true, kind: true, isActive: true },
   });
 
-  if (!chosen?.isActive) {
-    throw new Error("TYPE_INACTIVE");
-  }
+  if (!found) throw new Error("TYPE_NOT_FOUND");
+  if (!found.isActive) throw new Error("TYPE_INACTIVE");
+
+  return {
+    category: found.kind as string,
+    path: [] as string[],
+    chosen: { categoryId: found.id, productCategory: { name: found.name } },
+    typeId: null,
+  };
+}
+
+export async function createProduct(data: CreateProductInput) {
+  const { category, path, chosen, typeId } = await placeOf(data);
 
   const parts = {
     categoryName: chosen.productCategory?.name ?? null,
@@ -96,7 +121,7 @@ export async function createProduct(data: CreateProductInput) {
             price,
             costPrice: data.costPrice ?? null,
             category: category as never,
-            typeId: data.typeId,
+            typeId,
             categoryId: chosen.categoryId,
           },
         });
