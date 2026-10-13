@@ -171,3 +171,40 @@
     border-top: 1px solid var(--border) !important;
   }
 }
+
+/* A day opens to what was sold, product by product. */
+.clickable {
+  cursor: pointer;
+}
+
+.detail td {
+  background: color-mix(in srgb, var(--brand) 5%, var(--surface)) !important;
+  white-space: normal;
+}
+
+.detail ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.detail li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.detail li strong {
+  display: inline;
+}
+
+@media (max-width: 720px) {
+  .table tbody tr.detail {
+    display: block;
+    margin-top: -6px;
+  }
+}
