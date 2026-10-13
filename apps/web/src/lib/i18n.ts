@@ -1414,6 +1414,9 @@ export const en = {
   'prod.quantityNote': 'How many you have now. They go into the Main Store.',
   'prod.noMainStore': 'There is no Main Store.',
   'prod.quantityFailed': 'The product was saved, but the quantity was not added: {reason}. Add it from Inventory.',
+  'pay.transferPart': 'Transfer part',
+  'pay.cashPart': 'Cash part',
+  'pay.transferTooBig': 'The transfer must be less than the total. For the full amount, choose Transfer.',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2794,6 +2797,9 @@ export const am: Record<TranslationKey, string> = {
   'prod.quantityNote': 'አሁን ያለዎት ብዛት። ወደ ዋና መጋዘን ይገባል።',
   'prod.noMainStore': 'ዋና መጋዘን የለም።',
   'prod.quantityFailed': 'ምርቱ ተቀምጧል፣ ግን ብዛቱ አልተጨመረም፦ {reason}። ከክምችት ያስገቡት።',
+  'pay.transferPart': 'የዝውውር ክፍል',
+  'pay.cashPart': 'የጥሬ ገንዘብ ክፍል',
+  'pay.transferTooBig': 'ዝውውሩ ከጠቅላላው ያነሰ መሆን አለበት። ሙሉውን ለመክፈል ዝውውርን ይምረጡ።',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }

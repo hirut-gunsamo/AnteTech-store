@@ -1108,3 +1108,17 @@
   opacity: 0.35;
   cursor: default;
 }
+
+/* Cash + transfer: the total under the two parts. */
+.splitTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.splitTotal strong {
+  font-size: 17px;
+  color: var(--text);
+}
