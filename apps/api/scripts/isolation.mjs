@@ -203,6 +203,8 @@ async function main() {
         continue;
       }
       const leaked = Object.entries(traces).filter(([, value]) => res.text.includes(value));
+      // The Owner's buying prices never reach a seller, from any page.
+      if (/"costPrice":\s*[0-9"]/.test(res.text) || /"unitCost"/.test(res.text)) leaked.push(["a buying price", ""]);
       check(
         `A seller: ${url} shows nothing of store B`,
         res.status === 200 && leaked.length === 0,

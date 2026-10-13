@@ -7,6 +7,8 @@ const baseProductSchema = z.object({
   name: z.string().min(2).max(150).optional(),
   description: z.string().max(500).optional(),
   price: z.coerce.number().nonnegative(),
+  // What the business pays for one, for profit and loss. Owner only.
+  costPrice: z.coerce.number().nonnegative().max(100_000_000).nullable().optional(),
 });
 
 export const createProductSchema = baseProductSchema.extend({
@@ -23,6 +25,8 @@ export const updateProductSchema = z
     name: z.string().trim().min(2).max(150).optional(),
     description: z.string().max(500).nullable().optional(),
     price: z.coerce.number().nonnegative().optional(),
+    // null clears a buying price typed by mistake.
+    costPrice: z.coerce.number().nonnegative().max(100_000_000).nullable().optional(),
     // Serialized goods only.
     model: z.string().trim().min(1).max(80).optional(),
     storage: z.string().max(40).nullable().optional(),
