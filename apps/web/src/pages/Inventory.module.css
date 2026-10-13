@@ -706,16 +706,9 @@
   }
 }
 
-@media (max-width: 1160px) and (min-width: 721px) {
-  .table th:nth-child(2),
-  .table td:nth-child(2) {
-    display: none;
-  }
-}
-
 @media (max-width: 1080px) and (min-width: 721px) {
-  .table th:nth-child(4),
-  .table td:nth-child(4) {
+  .table th:nth-child(3),
+  .table td:nth-child(3) {
     display: none;
   }
 }
@@ -766,10 +759,10 @@
   .table tbody tr {
     position: relative;
     display: grid;
-    grid-template-columns: 34px minmax(0, 1fr) auto 30px;
+    grid-template-columns: minmax(0, 1fr) auto 30px;
     grid-template-areas:
-      'icon name price act'
-      'icon meta status act';
+      'name price act'
+      'meta status act';
     align-items: center;
     column-gap: 11px;
     row-gap: 3px;
@@ -797,20 +790,6 @@
   .table td[data-label='Store'],
   .table td[data-label='Quantity'] {
     display: none;
-  }
-
-  .table td[data-label='SKU / Serial'] {
-    grid-area: icon;
-  }
-
-  .table td[data-label='SKU / Serial'] .sku {
-    gap: 0;
-  }
-
-  .skuIcon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
   }
 
   .table td[data-label='Product'] {

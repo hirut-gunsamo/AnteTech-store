@@ -41,11 +41,6 @@ const CATEGORY_PILL: Record<string, TranslationKey> = {
   QUANTITY: 'kind.QUANTITY',
 }
 
-const CATEGORY_ICON: Record<string, keyof typeof icons> = {
-  SERIALIZED: 'phone',
-  QUANTITY: 'box',
-}
-
 const STATUS_FILTERS: {
   value: StockStatus | 'ALL'
   labelKey: TranslationKey
@@ -624,7 +619,6 @@ export default function Inventory() {
                         aria-label={t("common.selectAll")}
                       />
                     </th>
-                    <th scope="col" aria-label={t('inv.category')} />
                     <th scope="col">{t('inv.product')}</th>
                     <th scope="col">{t('inv.category')}</th>
                     <th scope="col">{t('common.branch')}</th>
@@ -670,21 +664,6 @@ export default function Inventory() {
                           />
                         </td>
 
-                        <td data-label={t('inv.sku')}>
-                          <span className={styles.sku}>
-                            <span
-                              className={styles.skuIcon}
-                              data-category={row.product.category}
-                            >
-                              <Icon
-                                name={
-                                  CATEGORY_ICON[row.product.category] ?? 'box'
-                                }
-                                size={13}
-                              />
-                            </span>
-                          </span>
-                        </td>
 
                         <td data-label={t('inv.product')} className={styles.strong}>
                           {row.product.name}
