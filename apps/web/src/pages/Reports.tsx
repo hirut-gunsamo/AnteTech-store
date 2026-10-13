@@ -145,9 +145,6 @@ const monthStart = () => {
   return isoDay(new Date(now.getFullYear(), now.getMonth(), 1))
 }
 
-// Devices first in the daily table: they carry most of the money.
-const DAILY_ORDER = ['SERIALIZED', 'QUANTITY'] as const
-
 /** One selling store's own reports, for the Owner's "All stores" view. */
 type StoreReport = {
   id: string
@@ -166,7 +163,7 @@ export default function Reports() {
   // takings, so the carried-forward columns and the day book are theirs too.
   const carriesCash = true
 
-  const [sales, setSales] = useState<SalesReport | null>(null)
+  const [, setSales] = useState<SalesReport | null>(null)
   const [cash, setCash] = useState<CashPositionReport | null>(null)
   const [stock, setStock] = useState<InventoryReport | null>(null)
   const [requests, setRequests] = useState<StockRequest[]>([])
@@ -1048,156 +1045,6 @@ export default function Reports() {
         <>
           {/* One line per seller per day: the report the business reads first. */}
           <SalesDaysReport from={from} to={to} branch={branch} reload={applied} />
-
-          <Card title={t("rep.branchPerformance")}>
-            {(sales?.byBranch ?? []).length === 0 ? (
-              <Empty>{t('rep.noBranchSales')}</Empty>
-            ) : (
-              <div className={styles.scroll}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('common.branch')}</th>
-                      <th scope="col">{t('rep.totalSales')}</th>
-                      <th scope="col">{t('rep.salesCount')}</th>
-                      {CATEGORY_ORDER.map((key) => (
-                        <th key={key} scope="col">
-                          {CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key}
-                        </th>
-                      ))}
-                      <th scope="col">{t('sales.cashReceived')}</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {(sales?.byBranch ?? []).map((entry) => (
-                      <tr key={entry.id}>
-                        <td data-label={t('common.branch')} className={styles.strong}>
-                          {entry.name}
-                        </td>
-                        <td data-label={t('rep.totalSales')} className="tabular">
-                          {currency(entry.revenue)}
-                        </td>
-                        <td data-label={t('rep.salesCount')} className="tabular">
-                          {count(entry.transactions)}
-                        </td>
-                        {CATEGORY_ORDER.map((key) => (
-                          <td key={key} data-label={CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key} className="tabular">
-                            {count(entry.byCategory?.[key]?.quantity ?? 0)}
-                          </td>
-                        ))}
-                        <td data-label={t('sales.cashReceived')} className="tabular">
-                          {currency(entry.cashReceived)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-
-                  <tfoot>
-                    <tr>
-                      <td data-label={t('common.branch')}>{t('rep.totalRow')}</td>
-                      <td data-label={t('rep.totalSales')} className="tabular">
-                        {currency(sales?.summary.revenue ?? 0)}
-                      </td>
-                      <td data-label={t('rep.salesCount')} className="tabular">
-                        {count(sales?.summary.transactions ?? 0)}
-                      </td>
-                      {CATEGORY_ORDER.map((key) => (
-                        <td key={key} data-label={CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key} className="tabular">
-                          {count(sales?.summary.byCategory?.[key]?.quantity ?? 0)}
-                        </td>
-                      ))}
-                      <td data-label={t('sales.cashReceived')} className="tabular">
-                        {currency(sales?.summary.cashReceived ?? 0)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
-          </Card>
-
-          {/* One row per day per store: devices and accessories, each as
-              birr and pieces sold. */}
-          <Card title={t('rep.dailyByBranch')}>
-            {(sales?.dailyByBranch ?? []).length === 0 ? (
-              <Empty>{t('rep.noBranchSales')}</Empty>
-            ) : (
-              <div className={styles.scroll}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('req.date')}</th>
-                      <th scope="col">{t('common.branch')}</th>
-                      {DAILY_ORDER.map((key) => (
-                        <th key={key} scope="col">
-                          {CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key}
-                        </th>
-                      ))}
-                      <th scope="col">{t('rep.totalSales')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(sales?.dailyByBranch ?? []).flatMap((row) =>
-                      Object.entries(row.branches)
-                        .map(([id, cell]) => ({
-                          id,
-                          cell,
-                          name:
-                            (sales?.byBranch ?? []).find((entry) => entry.id === id)?.name ?? '—',
-                        }))
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map(({ id, cell, name }, index) => (
-                          <tr key={`${row.day}-${id}`}>
-                            <td data-label={t('req.date')} className={styles.strong}>
-                              {index === 0 ? shortDate(`${row.day}T12:00:00`) : ''}
-                            </td>
-                            <td data-label={t('common.branch')}>{name}</td>
-                            {DAILY_ORDER.map((key) => (
-                              <td
-                                key={key}
-                                data-label={CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key}
-                                className="tabular"
-                              >
-                                {currency(cell.byCategory?.[key]?.revenue ?? 0)}
-                                <em className={styles.sub}>
-                                  {t('rep.nSold', { n: count(cell.byCategory?.[key]?.quantity ?? 0) })}
-                                </em>
-                              </td>
-                            ))}
-                            <td data-label={t('rep.totalSales')} className={`${styles.strong} tabular`}>
-                              {currency(cell.revenue)}
-                            </td>
-                          </tr>
-                        )),
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-
-          {/* What sold, item by item and branch by branch. */}
-          <ItemBreakdown
-            titleKey="rep.salesByItem"
-            money
-            branches={(sales?.byBranch ?? [])
-              .map((entry) => ({ id: entry.id, name: entry.name }))
-              .sort((a, b) => a.name.localeCompare(b.name))}
-            rows={(sales?.byItem ?? []).map((item) => ({
-              key: item.id,
-              name: item.name,
-              sku: item.sku,
-              category: item.category,
-              categoryName: item.categoryName,
-              at: Object.fromEntries(
-                Object.entries(item.branches).map(([id, value]) => [
-                  id,
-                  { quantity: value.quantity, revenue: value.revenue },
-                ]),
-              ),
-            }))}
-          />
         </>
       ) : null}
 
