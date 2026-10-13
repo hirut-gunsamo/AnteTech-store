@@ -232,12 +232,6 @@ export async function approveRequest(
     throw new Error("SOURCE_REQUIRED");
   }
 
-  // The goods travel by road, so the store expecting them is told who is
-  // bringing them before the van leaves.
-  if (!data.driverName || !data.driverPhone || !data.vehiclePlate) {
-    throw new Error("DRIVER_REQUIRED");
-  }
-
   const sourceBranchId = data.sourceBranchId;
 
   if (destinationId === sourceBranchId) {
@@ -301,9 +295,10 @@ export async function approveRequest(
         shippedAt: new Date(),
         notes: data.notes ?? null,
 
-        driverName: data.driverName,
-        driverPhone: data.driverPhone,
-        vehiclePlate: data.vehiclePlate,
+        // Who carries it is optional: the Owner just approves.
+        driverName: data.driverName ?? null,
+        driverPhone: data.driverPhone ?? null,
+        vehiclePlate: data.vehiclePlate ?? null,
 
         items: { create: shipping },
       },

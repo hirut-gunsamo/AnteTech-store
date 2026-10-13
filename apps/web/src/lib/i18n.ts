@@ -1397,6 +1397,8 @@ export const en = {
   'pay.searchPlaceholder': 'Search by seller, store or note…',
   'com.searchPlaceholder': 'Search by seller, store or category…',
   'appr.searchPlaceholder': 'Search by reference, requester or items…',
+  'dlg.approveOnly': 'Approve',
+  'dlg.overStockAll': '{store} does not have enough of an item above. Lower its number or tap “Match available stock”.',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2760,6 +2762,8 @@ export const am: Record<TranslationKey, string> = {
   'pay.searchPlaceholder': 'በሻጭ፣ በመደብር ወይም በማስታወሻ ይፈልጉ…',
   'com.searchPlaceholder': 'በሻጭ፣ በመደብር ወይም በምድብ ይፈልጉ…',
   'appr.searchPlaceholder': 'በማጣቀሻ፣ በጠያቂ ወይም በዕቃ ይፈልጉ…',
+  'dlg.approveOnly': 'አጽድቅ',
+  'dlg.overStockAll': '{store} ከላይ ካሉት ዕቃዎች የአንዱ በቂ የለውም። ቁጥሩን ይቀንሱ።',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
