@@ -141,14 +141,19 @@ export async function updateType(id: string, data: UpdateProductTypeInput) {
       where: {
         categoryId: type.categoryId,
         parentId: type.parentId,
-        name: data.name,
+        // "cover" and "Cover" are the same type.
+        name: { equals: data.name, mode: "insensitive" },
         id: { not: id },
       },
       select: { id: true },
     });
 
-    if (clash) {
+    if (clash && !data.merge) {
       throw new Error("TYPE_EXISTS");
+    }
+
+    if (clash) {
+      return mergeInto(id, clash.id);
     }
   }
 
@@ -210,4 +215,37 @@ export async function deleteType(id: string): Promise<"deleted" | "archived"> {
 
     throw error;
   }
+}
+
+/**
+ * Joins one type into another of the same name: its products and the types
+ * under it move across, then it is removed. Products keep their stock and
+ * sales; only the type they are filed under changes. A type under it that
+ * clashes with one already under the target is joined the same way.
+ */
+async function mergeInto(fromId: string, toId: string) {
+  await prisma.$transaction(async (tx) => {
+    const join = async (from: string, to: string): Promise<void> => {
+      await tx.product.updateMany({ where: { typeId: from }, data: { typeId: to } });
+
+      const children = await tx.productType.findMany({
+        where: { parentId: from },
+        select: { id: true, name: true },
+      });
+      for (const child of children) {
+        const twin = await tx.productType.findFirst({
+          where: { parentId: to, name: child.name },
+          select: { id: true },
+        });
+        if (twin) await join(child.id, twin.id);
+        else await tx.productType.update({ where: { id: child.id }, data: { parentId: to } });
+      }
+
+      await tx.productType.delete({ where: { id: from } });
+    };
+
+    await join(fromId, toId);
+  });
+
+  return prisma.productType.findUniqueOrThrow({ where: { id: toId }, select: typeSelect });
 }

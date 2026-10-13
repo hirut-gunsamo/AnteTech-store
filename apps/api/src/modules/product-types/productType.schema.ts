@@ -12,6 +12,9 @@ export const updateProductTypeSchema = z
   .object({
     name: z.string().min(1).max(80).optional(),
     isActive: z.boolean().optional(),
+    // Renaming onto a name already in the list joins the two: this type's
+    // products move to the other one and this one goes.
+    merge: z.boolean().optional(),
   })
   .refine((v) => v.name !== undefined || v.isActive !== undefined, {
     message: "Nothing to change",

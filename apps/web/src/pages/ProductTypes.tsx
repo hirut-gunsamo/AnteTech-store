@@ -5,7 +5,7 @@ import { icons } from '../components/icons'
 import { SearchBox } from '../components/SearchBox'
 import { TypeDialog } from '../components/products/TypeDialog'
 import { Toasts } from '../components/Toasts'
-import { api } from '../lib/api'
+import { api, ApiError } from '../lib/api'
 import { useCategories } from '../lib/categories'
 import { useT } from '../lib/i18n'
 import { matches } from '../lib/search'
@@ -58,8 +58,17 @@ export default function ProductTypes() {
     if (!name) return
     setSavingName(true)
     try {
-      await api(`/api/product-types/${editing.id}`, { method: 'PATCH', body: { name } })
-      push('success', t('types.renamed', { name }))
+      try {
+        await api(`/api/product-types/${editing.id}`, { method: 'PATCH', body: { name } })
+        push('success', t('types.renamed', { name }))
+      } catch (caught) {
+        // The name is already in the list: offer to join the two.
+        const code = caught instanceof ApiError ? (caught.body as { code?: string } | null)?.code : undefined
+        if (code !== 'TYPE_EXISTS') throw caught
+        if (!window.confirm(t('types.mergeConfirm', { name }))) return
+        await api(`/api/product-types/${editing.id}`, { method: 'PATCH', body: { name, merge: true } })
+        push('success', t('types.merged', { name }))
+      }
       setEditing(null)
       setReloadKey((n) => n + 1)
     } catch (caught) {

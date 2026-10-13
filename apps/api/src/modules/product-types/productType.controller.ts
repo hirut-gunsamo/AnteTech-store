@@ -41,7 +41,7 @@ function fail(reply: FastifyReply, error: unknown) {
 
   if (!known) throw error;
 
-  return reply.status(known.status).send({ message: known.message });
+  return reply.status(known.status).send({ message: known.message, code: (error as Error).message });
 }
 
 export async function getProductTypesController(
