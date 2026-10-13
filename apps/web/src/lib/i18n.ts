@@ -1417,6 +1417,10 @@ export const en = {
   'pay.transferPart': 'Transfer part',
   'pay.cashPart': 'Cash part',
   'pay.transferTooBig': 'The transfer must be less than the total. For the full amount, choose Transfer.',
+  'sale.charger': 'Local charger given with the phone',
+  'sale.chargerNone': 'No charger',
+  'sale.chargerNote': '{n} taken from your stock with the phone, at no price.',
+  'sale.chargerShort': 'Not enough of this charger in your store.',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2800,6 +2804,10 @@ export const am: Record<TranslationKey, string> = {
   'pay.transferPart': 'የዝውውር ክፍል',
   'pay.cashPart': 'የጥሬ ገንዘብ ክፍል',
   'pay.transferTooBig': 'ዝውውሩ ከጠቅላላው ያነሰ መሆን አለበት። ሙሉውን ለመክፈል ዝውውርን ይምረጡ።',
+  'sale.charger': 'ከስልኩ ጋር የተሰጠ ቻርጀር',
+  'sale.chargerNone': 'ቻርጀር የለም',
+  'sale.chargerNote': '{n} ከስልኩ ጋር ከክምችትዎ ይቀነሳል፣ ያለ ዋጋ።',
+  'sale.chargerShort': 'በሱቅዎ ይህ ቻርጀር በቂ የለም።',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
