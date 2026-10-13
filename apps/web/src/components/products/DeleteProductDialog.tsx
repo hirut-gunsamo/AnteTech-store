@@ -74,7 +74,7 @@ export function DeleteProductDialog({
         <header className={styles.head}>
           <div>
             <h2>{t('prod.deleteTitle')}</h2>
-            <p className="tabular">{product.sku}</p>
+            <p>{product.name}</p>
           </div>
           <button type="button" onClick={onClose} aria-label={t('common.close')}>
             ✕
