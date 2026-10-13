@@ -24,6 +24,7 @@ import { usePageSize } from '../lib/prefs'
 import { useToasts } from '../lib/toasts'
 import type { Sale } from '../lib/types'
 import styles from './Sales.module.css'
+import panel from '../components/inventory/Panel.module.css'
 
 const TABS = [
   { value: 'ALL', labelKey: 'sales.tabAll' },
@@ -232,25 +233,34 @@ export default function Sales() {
   const isSales = user?.role === 'SALES'
   const isOwner = user?.role === 'OWNER'
 
-  // The Owner deletes sales; what they took goes back on the store's shelf.
-  async function removeSales(list: Sale[]) {
+  // The Owner deletes sales. Asked first whether the items go back on the
+  // store's shelf (a mistake or a return) or really left (record only).
+  const [deleting, setDeleting] = useState<Sale[] | null>(null)
+  const [restock, setRestock] = useState(true)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+
+  function removeSales(list: Sale[]) {
     if (list.length === 0) return
-    const ask =
-      list.length === 1
-        ? t('sales.deleteConfirm', { id: saleRef(list[0]) })
-        : t('sales.deleteManyConfirm', { n: list.length })
-    if (!window.confirm(ask)) return
+    setRestock(true)
+    setDeleting(list)
+  }
+
+  async function confirmDelete() {
+    if (!deleting || deleteBusy) return
+    setDeleteBusy(true)
     let done = 0
-    for (const sale of list) {
+    for (const sale of deleting) {
       try {
-        await api(`/api/sales/${sale.id}`, { method: 'DELETE', body: {} })
+        await api(`/api/sales/${sale.id}`, { method: 'DELETE', body: { restock } })
         done += 1
       } catch (caught) {
         push('error', caught instanceof Error ? caught.message : 'Could not delete it.')
       }
     }
+    setDeleteBusy(false)
+    setDeleting(null)
     if (done > 0) {
-      push('success', t('sales.deleted', { n: done }))
+      push('success', restock ? t('sales.deleted', { n: done }) : t('sales.deletedNoStock', { n: done }))
       setSelected(new Set())
       setReloadKey((n) => n + 1)
     }
@@ -884,6 +894,46 @@ export default function Sales() {
           </>
         )}
       </Card>
+
+      {deleting ? (
+        <div className={panel.scrim} onClick={() => !deleteBusy && setDeleting(null)}>
+          <aside
+            className={panel.panel}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('sales.deleteTitle', { n: deleting.length })}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className={panel.head}>
+              <div>
+                <h2>{t('sales.deleteTitle', { n: deleting.length })}</h2>
+                <p>{deleting.map((sale) => saleRef(sale)).slice(0, 4).join(', ')}{deleting.length > 4 ? ' …' : ''}</p>
+              </div>
+              <button type="button" onClick={() => setDeleting(null)} aria-label={t('common.close')} disabled={deleteBusy}>
+                ✕
+              </button>
+            </header>
+            <div className={panel.body}>
+              <label className={panel.check}>
+                <input type="checkbox" checked={restock} onChange={(event) => setRestock(event.target.checked)} />
+                <span>
+                  <strong>{t('sales.restock')}</strong>
+                  <em>{restock ? t('sales.restockOn') : t('sales.restockOff')}</em>
+                </span>
+              </label>
+              <p className={panel.hint}>{t('sales.deleteWarn')}</p>
+              <div className={panel.actions}>
+                <button type="button" className={panel.cancel} onClick={() => setDeleting(null)} disabled={deleteBusy}>
+                  {t('common.cancel')}
+                </button>
+                <button type="button" className={`${panel.submit} ${styles.dangerFill}`} onClick={() => void confirmDelete()} disabled={deleteBusy}>
+                  {deleteBusy ? t('common.saving') : t('prod.delete')}
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      ) : null}
 
       <Toasts toasts={toasts} onDismiss={dismiss} />
 

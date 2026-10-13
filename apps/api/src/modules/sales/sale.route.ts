@@ -42,7 +42,7 @@ export async function saleRoutes(app: FastifyInstance) {
   );
 
   // Only an unsubmitted draft can be removed
-  app.delete<{ Params: SaleParams }>(
+  app.delete<{ Params: SaleParams; Body: { restock?: boolean } | undefined }>(
     "/:id",
     {
       preHandler: [
