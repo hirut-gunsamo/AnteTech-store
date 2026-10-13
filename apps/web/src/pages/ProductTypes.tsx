@@ -47,6 +47,66 @@ export default function ProductTypes() {
     return () => controller.abort()
   }, [reloadKey])
 
+  // Renaming in place: the row turns into a box with Save and Cancel.
+  const [editing, setEditing] = useState<{ id: string; draft: string } | null>(null)
+  const [savingName, setSavingName] = useState(false)
+
+  async function rename() {
+    if (!editing || savingName) return
+    const name = editing.draft.trim()
+    if (!name) return
+    setSavingName(true)
+    try {
+      await api(`/api/product-types/${editing.id}`, { method: 'PATCH', body: { name } })
+      push('success', t('types.renamed', { name }))
+      setEditing(null)
+      setReloadKey((n) => n + 1)
+    } catch (caught) {
+      push('error', caught instanceof Error ? caught.message : 'Failed.')
+    } finally {
+      setSavingName(false)
+    }
+  }
+
+  const nameOf = (node: TypeNode) =>
+    editing?.id === node.id ? (
+      <input
+        className={styles.renameInput}
+        value={editing.draft}
+        onChange={(event) => setEditing({ id: node.id, draft: event.target.value })}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') void rename()
+          if (event.key === 'Escape') setEditing(null)
+        }}
+        maxLength={80}
+        autoFocus
+        aria-label={t('prod.typeName')}
+      />
+    ) : (
+      node.name
+    )
+
+  const actionsOf = (node: TypeNode) =>
+    editing?.id === node.id ? (
+      <span className={styles.rowActions}>
+        <button type="button" className={styles.edit} onClick={() => void rename()} disabled={savingName}>
+          {t('common.save')}
+        </button>
+        <button type="button" className={styles.edit} onClick={() => setEditing(null)}>
+          {t('common.cancel')}
+        </button>
+      </span>
+    ) : (
+      <span className={styles.rowActions}>
+        <button type="button" className={styles.edit} onClick={() => setEditing({ id: node.id, draft: node.name })}>
+          {t('prod.edit')}
+        </button>
+        <button type="button" className={styles.remove} onClick={() => void remove(node)}>
+          {t('prod.delete')}
+        </button>
+      </span>
+    )
+
   async function remove(node: TypeNode) {
     if (!window.confirm(t('prod.deleteTypeConfirm', { name: node.name }))) return
 
@@ -134,14 +194,10 @@ export default function ProductTypes() {
                         return [
                           <tr key={root.id}>
                             <td className={base.strong} data-label={t('prod.typeName')}>
-                              {root.name}
+                              {nameOf(root)}
                             </td>
                             {isPhone ? <td>—</td> : null}
-                            <td className={base.actionsCol}>
-                              <button type="button" className={styles.remove} onClick={() => void remove(root)}>
-                                {t('prod.delete')}
-                              </button>
-                            </td>
+                            <td className={base.actionsCol}>{actionsOf(root)}</td>
                           </tr>,
                         ]
                       }
@@ -149,13 +205,12 @@ export default function ProductTypes() {
                       return children.map((child, index) => (
                         <tr key={child.id}>
                           <td className={base.strong} data-label={t('prod.brand')}>
-                            {index === 0 ? root.name : ''}
+                            {index === 0 ? nameOf(root) : ''}
                           </td>
-                          <td data-label={t('prod.typeName')}>{child.name}</td>
+                          <td data-label={t('prod.typeName')}>{nameOf(child)}</td>
                           <td className={base.actionsCol}>
-                            <button type="button" className={styles.remove} onClick={() => void remove(child)}>
-                              {t('prod.delete')}
-                            </button>
+                            {index === 0 ? actionsOf(root) : null}
+                            {actionsOf(child)}
                           </td>
                         </tr>
                       ))
