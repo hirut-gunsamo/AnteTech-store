@@ -210,8 +210,13 @@ export async function approveRequest(
     throw new Error("DECIDE_EACH_ITEM");
   }
 
+  // Decided lines may still be lowered when sending (the store has fewer),
+  // never raised past what was decided.
   const approved = decidedOneByOne
-    ? new Map(request.items.map((item) => [item.id, item.approvedQuantity ?? 0]))
+    ? resolveApprovedQuantities(
+        request.items.map((item) => ({ id: item.id, quantity: item.approvedQuantity ?? 0 })),
+        data.items,
+      )
     : resolveApprovedQuantities(request.items, data.items);
 
   // Lines approved at 0 are declined: they are recorded on the request but

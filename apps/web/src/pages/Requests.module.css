@@ -778,10 +778,10 @@
 
 /* ---------- Tablet: shed columns rather than scroll ----------
 
-   Eight columns. The select column goes first, then the date (the reference
-   already carries it), then the From → To route, which the details panel
-   spells out anyway. Request ID, Requested By, Items, Status and Actions all
-   survive to the card breakpoint. */
+   Nine columns. The select column and the date go first (the reference
+   already carries the date), then the From → To route, then who asked; the
+   details panel spells all of them out. Request ID, Items, Quantity, Status
+   and Actions survive to the card breakpoint. */
 
 @media (max-width: 1240px) and (min-width: 721px) {
   .table td[data-label='Requested By'],
@@ -790,22 +790,38 @@
   }
 
   .table th:nth-child(1),
-  .table td:nth-child(1) {
-    display: none;
-  }
-}
-
-@media (max-width: 1080px) and (min-width: 721px) {
+  .table td:nth-child(1),
   .table th:nth-child(3),
   .table td:nth-child(3) {
     display: none;
   }
 }
 
-@media (max-width: 940px) and (min-width: 721px) {
+@media (max-width: 1180px) and (min-width: 721px) {
   .table th:nth-child(5),
   .table td:nth-child(5) {
     display: none;
+  }
+}
+
+@media (max-width: 1040px) and (min-width: 721px) {
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    display: none;
+  }
+}
+
+/* Long item names and store names wrap rather than push the actions off
+   the edge; the actions column always stays in view. */
+@media (min-width: 721px) {
+  .table td[data-col='items'] {
+    white-space: normal;
+    min-width: 160px;
+  }
+
+  .table td:nth-child(4),
+  .table td:nth-child(5) {
+    white-space: normal;
   }
 }
 
@@ -1002,4 +1018,17 @@
   cursor: pointer;
   text-transform: none;
   letter-spacing: 0;
+}
+
+/* Item names and their quantities, one per line, in two columns. */
+.itemNames {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.itemQty {
+  font-weight: 600;
 }
