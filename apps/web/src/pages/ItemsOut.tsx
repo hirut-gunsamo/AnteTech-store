@@ -39,6 +39,8 @@ export default function ItemsOut() {
     return () => controller.abort()
   }, [t])
 
+  if (user?.role !== 'OWNER') return <Navigate to="/inventory" replace />
+
   const rows = useMemo(
     () =>
       (movements ?? []).filter(
@@ -48,10 +50,6 @@ export default function ItemsOut() {
       ),
     [movements],
   )
-
-
-  // After every hook, so the hooks run in the same order on each render.
-  if (user?.role !== 'OWNER') return <Navigate to="/inventory" replace />
 
   return (
     <div className={styles.page}>
