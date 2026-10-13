@@ -1398,7 +1398,9 @@ export const en = {
   'com.searchPlaceholder': 'Search by seller, store or category…',
   'appr.searchPlaceholder': 'Search by reference, requester or items…',
   'dlg.approveOnly': 'Approve',
-  'dlg.overStockAll': '{store} does not have enough of an item above. Lower its number or tap “Match available stock”.',
+  'dlg.overStockAll': '{store} has fewer of some items than asked. Approving sends what it has ({n} units); the rest is not sent.',
+  'tr.incomingTitle': 'Delivery on the way ({n})',
+  'tr.incomingFrom': 'From {from}',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2763,7 +2765,9 @@ export const am: Record<TranslationKey, string> = {
   'com.searchPlaceholder': 'በሻጭ፣ በመደብር ወይም በምድብ ይፈልጉ…',
   'appr.searchPlaceholder': 'በማጣቀሻ፣ በጠያቂ ወይም በዕቃ ይፈልጉ…',
   'dlg.approveOnly': 'አጽድቅ',
-  'dlg.overStockAll': '{store} ከላይ ካሉት ዕቃዎች የአንዱ በቂ የለውም። ቁጥሩን ይቀንሱ።',
+  'dlg.overStockAll': '{store} ከተጠየቀው ያነሰ ያለባቸው ዕቃዎች አሉ። ሲያጸድቁ ያለው ({n}) ይላካል፤ የቀረው አይላክም።',
+  'tr.incomingTitle': 'በመንገድ ላይ ያለ ዕቃ ({n})',
+  'tr.incomingFrom': 'ከ{from}',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
