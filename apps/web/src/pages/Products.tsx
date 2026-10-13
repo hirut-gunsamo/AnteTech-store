@@ -104,6 +104,9 @@ export default function Products() {
     [products, category, search],
   )
 
+  // Only phones have a brand; for an accessory it would repeat the name.
+  const showBrand = rows.some((product) => product.category === 'SERIALIZED')
+
   const heldOf = (product: ProductRow) =>
     product.inventoryBalances.reduce((sum, balance) => sum + balance.quantity, 0)
 
@@ -181,7 +184,7 @@ export default function Products() {
                 <tr>
                   <th scope="col">{t('prod.name')}</th>
                   <th scope="col">{t('prod.category')}</th>
-                  <th scope="col">{t('prod.brand')}</th>
+                  {showBrand ? <th scope="col">{t('prod.brand')}</th> : null}
                   <th scope="col">{t('prod.details')}</th>
                   <th scope="col">{t('prod.price')}</th>
                   <th scope="col">{t('prod.costPrice')}</th>
@@ -208,9 +211,13 @@ export default function Products() {
                       <td data-label={t('prod.category')}>
                         {product.productCategory?.name ?? '—'}
                       </td>
-                      <td data-label={t('prod.brand')}>
-                        {product.phoneDetails?.brand ?? product.type?.name ?? '—'}
-                      </td>
+                      {showBrand ? (
+                        <td data-label={t('prod.brand')}>
+                          {product.category === 'SERIALIZED'
+                            ? (product.phoneDetails?.brand ?? product.type?.name ?? '—')
+                            : '—'}
+                        </td>
+                      ) : null}
                       <td data-label={t('prod.details')}>{detailOf(product)}</td>
                       <td data-label={t('prod.price')} className="tabular">
                         {product.price == null ? '—' : currency(Number(product.price))}
