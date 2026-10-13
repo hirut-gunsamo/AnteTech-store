@@ -1049,108 +1049,54 @@ export default function Reports() {
       ) : null}
 
       {tab === 'INVENTORY' ? (
-        <>
-        <Card title={t("rep.stockByBranch")}>
-          {(stock?.branches ?? []).length === 0 ? (
+        (stock?.branches ?? []).length === 0 ? (
+          <Card title={t("rep.stockByBranch")}>
             <Empty>{t('rep.noStock')}</Empty>
-          ) : (
-            <div className={styles.scroll}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th scope="col">{t('common.branch')}</th>
-                    {CATEGORY_ORDER.map((key) => (
-                      <th key={key} scope="col">
-                        {CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key}
-                      </th>
-                    ))}
-                    <th scope="col">{t('rep.totalUnits')}</th>
-                    <th scope="col">{t('rep.stockValue')}</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {(stock?.branches ?? []).map((entry) => (
-                    <tr key={entry.id}>
-                      <td data-label={t('common.branch')} className={styles.strong}>
-                        {entry.name}
-                      </td>
-                      {CATEGORY_ORDER.map((key) => (
-                        <td key={key} data-label={CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key} className="tabular">
-                          {count(entry.byCategory?.[key]?.quantity ?? 0)}
+          </Card>
+        ) : (
+          // Each store on its own, never added together: the Main Store
+          // first, then the selling stores.
+          [...(stock?.branches ?? [])]
+            .sort(
+              (a, b) =>
+                Number(Boolean(branches.find((row) => row.id === b.id)?.isMainStock)) -
+                Number(Boolean(branches.find((row) => row.id === a.id)?.isMainStock)),
+            )
+            .map((entry) => (
+              <Card key={entry.id} title={entry.name}>
+                <div className={styles.scroll}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        {CATEGORY_ORDER.map((key) => (
+                          <th key={key} scope="col">
+                            {CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key}
+                          </th>
+                        ))}
+                        <th scope="col">{t('rep.totalUnits')}</th>
+                        <th scope="col">{t('rep.stockValue')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        {CATEGORY_ORDER.map((key) => (
+                          <td key={key} data-label={CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key} className="tabular">
+                            {count(entry.byCategory?.[key]?.quantity ?? 0)}
+                          </td>
+                        ))}
+                        <td data-label={t('rep.totalUnits')} className="tabular">
+                          {count(entry.totalUnits)}
                         </td>
-                      ))}
-                      <td data-label={t('rep.totalUnits')} className="tabular">
-                        {count(entry.totalUnits)}
-                      </td>
-                      <td data-label={t('rep.stockValue')} className={`${styles.strong} tabular`}>
-                        {currency(entry.stockValue)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-
-                <tfoot>
-                  <tr>
-                    <td data-label={t('common.branch')}>{t('rep.totalRow')}</td>
-                    {CATEGORY_ORDER.map((key) => (
-                      <td key={key} data-label={CATEGORY_KEY[key] ? t(CATEGORY_KEY[key]) : key} className="tabular">
-                        {count(
-                          (stock?.branches ?? []).reduce(
-                            (sum, b) => sum + (b.byCategory?.[key]?.quantity ?? 0),
-                            0,
-                          ),
-                        )}
-                      </td>
-                    ))}
-                    <td data-label={t('rep.totalUnits')} className="tabular">
-                      {count(
-                        (stock?.branches ?? []).reduce(
-                          (sum, b) => sum + b.totalUnits,
-                          0,
-                        ),
-                      )}
-                    </td>
-                    <td data-label={t('rep.stockValue')} className="tabular">
-                      {currency(
-                        (stock?.branches ?? []).reduce(
-                          (sum, b) => sum + b.stockValue,
-                          0,
-                        ),
-                      )}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-        </Card>
-
-        {/* The same stock, item by item. */}
-        <ItemBreakdown
-          titleKey="rep.stockByItem"
-          branches={(stock?.branches ?? []).map((entry) => ({ id: entry.id, name: entry.name }))}
-          rows={Object.values(
-            (stock?.branches ?? []).reduce<Record<string, ItemRow>>((acc, entry) => {
-              for (const item of entry.items) {
-                const row = acc[item.sku] ?? {
-                  key: item.sku,
-                  name: item.name,
-                  sku: item.sku,
-                  category: item.category,
-                  categoryName: item.categoryName,
-                  at: {},
-                }
-                const at = row.at[entry.id] ?? { quantity: 0 }
-                at.quantity += item.quantity
-                row.at[entry.id] = at
-                acc[item.sku] = row
-              }
-              return acc
-            }, {}),
-          )}
-        />
-        </>
+                        <td data-label={t('rep.stockValue')} className={`${styles.strong} tabular`}>
+                          {currency(entry.stockValue)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            ))
+        )
       ) : null}
 
       {tab === 'REQUESTS' ? (
