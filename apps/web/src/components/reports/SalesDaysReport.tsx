@@ -4,9 +4,10 @@ import { Card, Empty } from '../Card'
 import { api } from '../../lib/api'
 import { count, currency, shortDate } from '../../lib/format'
 import { useT } from '../../lib/i18n'
-import { groupByDay } from '../../lib/salesDays'
+import { groupByDay, type SalesDay } from '../../lib/salesDays'
 import type { Deduction, ExpenseReport, Sale } from '../../lib/types'
 import styles from './SalesDays.module.css'
+import panel from '../inventory/Panel.module.css'
 
 /** Every month from one day to another, as YYYY-MM, for the deductions API. */
 function monthsBetween(from: string, to: string) {
@@ -74,6 +75,7 @@ export function SalesDaysReport({ from, to, branch, reload }: { from: string; to
   }, [from, to, branch, reload])
 
   const days = useMemo(() => (sales ? groupByDay(sales, deductions, expenses) : []), [sales, deductions, expenses])
+  const openDay = days.find((day) => day.key === open) ?? null
   const sum = useMemo(
     () =>
       days.reduce(
@@ -143,14 +145,15 @@ export function SalesDaysReport({ from, to, branch, reload }: { from: string; to
               </tr>
             </thead>
             <tbody>
-              {days.map((day) => [
+              {days.map((day) => (
                 <tr
                   key={day.key}
                   className={styles.clickable}
                   tabIndex={0}
-                  aria-expanded={open === day.key}
-                  onClick={() => setOpen(open === day.key ? null : day.key)}
-                  onKeyDown={(event) => event.key === 'Enter' && setOpen(open === day.key ? null : day.key)}
+                  aria-haspopup="dialog"
+                  data-open={open === day.key ? '' : undefined}
+                  onClick={() => setOpen(day.key)}
+                  onKeyDown={(event) => event.key === 'Enter' && setOpen(day.key)}
                 >
                   <td data-label={t('req.date')} className={styles.when}>
                     {shortDate(`${day.date}T12:00:00`)}
@@ -167,36 +170,106 @@ export function SalesDaysReport({ from, to, branch, reload }: { from: string; to
                   {money(t('ds.deductions'), day.deductions, `${styles.minus} ${styles.groupStart}`)}
                   {money(t('ds.expenses'), day.expenses, styles.minus)}
                   {money(t('ds.net'), day.net, `${styles.net} ${styles.groupStart}`)}
-                </tr>,
-                // Tapping a day lists what was sold, product by product.
-                open === day.key ? (
-                  <tr key={`${day.key}-items`} className={styles.detail}>
-                    <td colSpan={10}>
-                      {day.items.length === 0 ? (
-                        <em>{t('rep.noSalesPeriod')}</em>
-                      ) : (
-                        <ul>
-                          {[...day.items]
-                            .sort((a, b) => b.amount - a.amount)
-                            .map((item) => (
-                              <li key={item.name}>
-                                <span>{item.name}</span>
-                                <span className="tabular">
-                                  {count(item.quantity)} × {currency(item.amount / item.quantity)}
-                                </span>
-                                <strong className="tabular">{currency(item.amount)}</strong>
-                              </li>
-                            ))}
-                        </ul>
-                      )}
-                    </td>
-                  </tr>
-                ) : null,
-              ])}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Tapping a day opens it on the right, as the SIM app does. */}
+      {openDay ? <DayDetails day={openDay} onClose={() => setOpen(null)} /> : null}
     </Card>
+  )
+}
+
+/** One seller's day on the right: the money first, then what was sold. */
+function DayDetails({ day, onClose }: { day: SalesDay; onClose: () => void }) {
+  const t = useT()
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const figures: [string, number, string?][] = [
+    [t('ds.dayTotal'), day.total],
+    [t('ds.transfer'), day.transfer],
+    [t('ds.cash'), day.cash],
+    [t('ds.deductions'), day.deductions, styles.minus],
+    [t('ds.expenses'), day.expenses, styles.minus],
+  ]
+
+  return (
+    <div className={panel.scrim} onClick={onClose}>
+      <aside
+        className={panel.panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={day.salesperson.name}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className={panel.head}>
+          <div>
+            <h2>{day.salesperson.name}</h2>
+            <p>
+              {shortDate(`${day.date}T12:00:00`)} · {day.store}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} aria-label={t('common.close')}>
+            ✕
+          </button>
+        </header>
+
+        <div className={`${panel.body} ${styles.dayPanel}`}>
+          <dl className={styles.dayFigures}>
+            <div>
+              <dt>{t('ds.phones')}</dt>
+              <dd className="tabular">
+                {count(day.phones.quantity)} · {currency(day.phones.amount)}
+              </dd>
+            </div>
+            <div>
+              <dt>{t('ds.accessories')}</dt>
+              <dd className="tabular">
+                {count(day.accessories.quantity)} · {currency(day.accessories.amount)}
+              </dd>
+            </div>
+            {figures.map(([label, amount, className]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd className={`tabular ${amount > 0 ? (className ?? '') : ''}`}>{currency(amount)}</dd>
+              </div>
+            ))}
+            <div className={styles.dayNet}>
+              <dt>{t('ds.net')}</dt>
+              <dd className="tabular">{currency(day.net)}</dd>
+            </div>
+          </dl>
+
+          <h3 className={styles.dayItemsTitle}>{t('ds.itemsSold')}</h3>
+          {day.items.length === 0 ? (
+            <Empty>{t('rep.noSalesPeriod')}</Empty>
+          ) : (
+            <ul className={styles.dayItems}>
+              {[...day.items]
+                .sort((a, b) => b.amount - a.amount)
+                .map((item) => (
+                  <li key={item.name}>
+                    <span>{item.name}</span>
+                    <span className="tabular">
+                      {count(item.quantity)} × {currency(item.amount / item.quantity)}
+                    </span>
+                    <strong className="tabular">{currency(item.amount)}</strong>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
+      </aside>
+    </div>
   )
 }

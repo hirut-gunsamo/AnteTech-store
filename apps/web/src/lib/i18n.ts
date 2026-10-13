@@ -1423,6 +1423,7 @@ export const en = {
   'sale.chargerPrice': 'Charger price (each)',
   'sale.chargerNoneInStore': 'No charger in your store',
   'sale.chargerShort': 'Not enough of this charger in your store.',
+  'ds.itemsSold': 'Items sold',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2812,6 +2813,7 @@ export const am: Record<TranslationKey, string> = {
   'sale.chargerPrice': 'የቻርጀር ዋጋ (አንዱ)',
   'sale.chargerNoneInStore': 'በሱቅዎ ቻርጀር የለም',
   'sale.chargerShort': 'በሱቅዎ ይህ ቻርጀር በቂ የለም።',
+  'ds.itemsSold': 'የተሸጡ ዕቃዎች',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
