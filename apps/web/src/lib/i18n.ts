@@ -1424,6 +1424,10 @@ export const en = {
   'sale.chargerNoneInStore': 'No charger in your store',
   'sale.chargerShort': 'Not enough of this charger in your store.',
   'ds.itemsSold': 'Items sold',
+  'sales.deleteConfirm': 'Delete sale {id}? Its items go back into the store\'s stock. This cannot be undone.',
+  'sales.deleteManyConfirm': 'Delete {n} sales? Their items go back into the stores\' stock. This cannot be undone.',
+  'sales.deleted': '{n} sale(s) deleted; the items are back in stock.',
+  'sales.deleteN': 'Delete ({n})',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2814,6 +2818,10 @@ export const am: Record<TranslationKey, string> = {
   'sale.chargerNoneInStore': 'በሱቅዎ ቻርጀር የለም',
   'sale.chargerShort': 'በሱቅዎ ይህ ቻርጀር በቂ የለም።',
   'ds.itemsSold': 'የተሸጡ ዕቃዎች',
+  'sales.deleteConfirm': 'ሽያጭ {id} ይሰረዝ? ዕቃዎቹ ወደ ሱቁ ክምችት ይመለሳሉ። ይህ መመለስ አይቻልም።',
+  'sales.deleteManyConfirm': '{n} ሽያጮች ይሰረዙ? ዕቃዎቻቸው ወደ ሱቆቹ ክምችት ይመለሳሉ። ይህ መመለስ አይቻልም።',
+  'sales.deleted': '{n} ሽያጭ ተሰርዟል፤ ዕቃዎቹ ወደ ክምችት ተመልሰዋል።',
+  'sales.deleteN': 'ሰርዝ ({n})',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }

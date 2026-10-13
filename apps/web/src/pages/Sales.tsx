@@ -232,6 +232,30 @@ export default function Sales() {
   const isSales = user?.role === 'SALES'
   const isOwner = user?.role === 'OWNER'
 
+  // The Owner deletes sales; what they took goes back on the store's shelf.
+  async function removeSales(list: Sale[]) {
+    if (list.length === 0) return
+    const ask =
+      list.length === 1
+        ? t('sales.deleteConfirm', { id: saleRef(list[0]) })
+        : t('sales.deleteManyConfirm', { n: list.length })
+    if (!window.confirm(ask)) return
+    let done = 0
+    for (const sale of list) {
+      try {
+        await api(`/api/sales/${sale.id}`, { method: 'DELETE', body: {} })
+        done += 1
+      } catch (caught) {
+        push('error', caught instanceof Error ? caught.message : 'Could not delete it.')
+      }
+    }
+    if (done > 0) {
+      push('success', t('sales.deleted', { n: done }))
+      setSelected(new Set())
+      setReloadKey((n) => n + 1)
+    }
+  }
+
   const filtersOn =
     tab !== 'ALL' ||
     search !== '' ||
@@ -530,6 +554,15 @@ export default function Sales() {
             <Icon name="download" size={15} />
             Export{selected.size > 0 ? ` (${selected.size})` : ''}
           </DownloadButton>
+          {isOwner && selected.size > 0 ? (
+            <button
+              type="button"
+              className={`${styles.ghost} ${styles.dangerGhost}`}
+              onClick={() => void removeSales((sales ?? []).filter((sale) => selected.has(sale.id)))}
+            >
+              {t('sales.deleteN', { n: selected.size })}
+            </button>
+          ) : null}
         </div>
 
         <div className={styles.filters}>
@@ -775,6 +808,19 @@ export default function Sales() {
                                 >
                                   {t('sales.viewDetails')}
                                 </button>
+                                {isOwner ? (
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className={styles.menuDanger}
+                                    onClick={() => {
+                                      setOpenMenu(null)
+                                      void removeSales([sale])
+                                    }}
+                                  >
+                                    {t('prod.delete')}
+                                  </button>
+                                ) : null}
 
                               </div>
                             ) : null}

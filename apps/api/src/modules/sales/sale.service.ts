@@ -367,17 +367,55 @@ export async function getSaleById(id: string, viewer: Viewer) {
 export async function deleteSale(id: string, viewer: Viewer) {
   const sale = await prisma.sale.findUnique({
     where: { id },
-    select: { id: true, status: true, salespersonId: true },
+    select: {
+      id: true,
+      status: true,
+      salespersonId: true,
+      locationId: true,
+      items: { select: { id: true, productId: true, quantity: true } },
+    },
   });
 
   if (!sale) {
     throw new Error("SALE_NOT_FOUND");
   }
 
-  if (
-    viewer.role !== "OWNER" &&
-    sale.salespersonId !== viewer.userId
-  ) {
+  // The Owner can remove any sale: what it took goes back on that store's
+  // shelf, and its IMEIs can be sold again.
+  if (viewer.role === "OWNER") {
+    await prisma.$transaction(async (tx) => {
+      if (sale.status !== "DRAFT") {
+        for (const item of sale.items) {
+          await tx.inventoryBalance.upsert({
+            where: {
+              locationId_productId: {
+                locationId: sale.locationId,
+                productId: item.productId,
+              },
+            },
+            update: { quantity: { increment: item.quantity } },
+            create: {
+              productId: item.productId,
+              locationId: sale.locationId,
+              quantity: item.quantity,
+            },
+          });
+        }
+      }
+
+      await tx.inventoryUnit.deleteMany({
+        where: { saleItemId: { in: sale.items.map((item) => item.id) } },
+      });
+      await tx.stockMovement.deleteMany({
+        where: { referenceType: "Sale", referenceId: sale.id },
+      });
+      await tx.sale.delete({ where: { id: sale.id } });
+    });
+
+    return { id };
+  }
+
+  if (sale.salespersonId !== viewer.userId) {
     throw new Error("NOT_YOUR_SALE");
   }
 

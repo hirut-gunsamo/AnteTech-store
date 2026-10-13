@@ -965,3 +965,16 @@
   color: var(--text-2);
   white-space: nowrap;
 }
+
+.menu .menuDanger {
+  color: var(--danger);
+}
+
+.menu .menuDanger:hover {
+  background: var(--danger-subtle);
+}
+
+.dangerGhost {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
