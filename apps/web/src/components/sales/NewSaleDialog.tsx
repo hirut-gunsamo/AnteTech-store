@@ -10,8 +10,18 @@ import styles from '../inventory/Panel.module.css'
 
 // `price` is what one sells for: agreed with the customer, so the seller
 // enters it; the product's suggested price fills it in to start with.
-// chargerId: the local charger given with a phone, '' for none.
-type Line = { categoryId: string; typeId: string; productId: string; quantity: string; price: string; serials: string; chargerId: string }
+// A phone line can add its local charger (ticked), with its own price.
+type Line = {
+  categoryId: string
+  typeId: string
+  productId: string
+  quantity: string
+  price: string
+  serials: string
+  chargerOn: boolean
+  chargerId: string
+  chargerPrice: string
+}
 
 // Which kinds the API requires one IMEI / serial per unit for. A counted line
 // must NOT send serials at all, so it is left out of this map entirely.
@@ -45,7 +55,7 @@ export function NewSaleDialog({
   const [stock, setStock] = useState<InventorySummary | null>(null)
   const t = useT()
   const [lines, setLines] = useState<Line[]>([
-    { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '', chargerId: '' },
+    { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '', chargerOn: false, chargerId: '', chargerPrice: '' },
   ])
   const [cashReceived, setCashReceived] = useState('')
   const [transferReceived, setTransferReceived] = useState('')
@@ -217,8 +227,25 @@ export function NewSaleDialog({
       hintKey,
       serialList,
       serialsMatch,
-      // Only a phone line carries a charger, one per phone.
-      chargerQty: needsSerials && line.chargerId && Number.isInteger(qty) && qty > 0 ? qty : 0,
+    }
+  }).map((line) => {
+    // Only a phone line carries a charger, one per phone, at the price the
+    // seller enters for it.
+    const chargerQty =
+      line.needsSerials && line.chargerOn && Number.isInteger(line.qty) && line.qty > 0 ? line.qty : 0
+    const chargerId = chargers.some((entry) => entry.id === line.chargerId)
+      ? line.chargerId
+      : (chargers[0]?.id ?? '')
+    const chargerPriceValue = Number(line.chargerPrice)
+    const chargerPriceValid =
+      line.chargerPrice.trim() !== '' && Number.isFinite(chargerPriceValue) && chargerPriceValue >= 0
+    return {
+      ...line,
+      chargerQty,
+      chargerId: chargerQty > 0 ? chargerId : '',
+      chargerPriceValue,
+      chargerReady: chargerQty === 0 || (chargerId !== '' && chargerPriceValid),
+      chargerTotal: chargerQty > 0 && chargerPriceValid ? chargerPriceValue * chargerQty : 0,
     }
   })
 
@@ -251,7 +278,7 @@ export function NewSaleDialog({
     }
   }
 
-  const total = priced.reduce((sum, line) => sum + line.total, 0)
+  const total = priced.reduce((sum, line) => sum + line.total + line.chargerTotal, 0)
   const anyOverStock = priced.some((line) => line.overStock)
   const allValid = priced.every((line) => line.valid) && priced.length > 0
   const allSerialsMatch = priced.every((line) => line.serialsMatch)
@@ -286,6 +313,7 @@ export function NewSaleDialog({
     (method === 'CASH' || bank !== '') &&
     allSerialsMatch &&
     chargerShort.size === 0 &&
+    priced.every((line) => line.chargerReady) &&
     duplicateSerials.size === 0
 
   function setLine(index: number, patch: Partial<Line>) {
@@ -317,14 +345,15 @@ export function NewSaleDialog({
             unitPrice: line.unitPrice,
             ...(line.needsSerials ? { serials: line.serialList } : {}),
           })).concat(
-            // The local charger leaves the store with the phone, at no price.
+            // The local charger leaves the store with the phone.
             priced
               .filter((line) => line.chargerQty > 0)
               .map((line) => ({
                 productId: line.chargerId,
                 quantity: line.chargerQty,
-                unitPrice: 0,
-                included: true,
+                unitPrice: line.chargerPriceValue,
+                // A charger given free goes out at 0.
+                ...(line.chargerPriceValue === 0 ? { included: true } : {}),
               })),
           ),
           cashReceived: method === 'TRANSFER' ? 0 : cashValue,
@@ -536,32 +565,68 @@ export function NewSaleDialog({
               ) : null}
 
               {line.needsSerials ? (
-                <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.check} style={{ gridColumn: '1 / -1' }}>
+                  <input
+                    type="checkbox"
+                    checked={line.chargerOn}
+                    onChange={(event) => {
+                      const on = event.target.checked
+                      const first = chargers.find((entry) => entry.id === line.chargerId) ?? chargers[0]
+                      setLine(index, {
+                        chargerOn: on,
+                        // Starts at the charger's suggested price, if it has one.
+                        ...(on && line.chargerPrice === '' && first?.price ? { chargerPrice: String(first.price) } : {}),
+                      })
+                    }}
+                  />
                   <span>
-                    {t('sale.charger')}
-                    <em>{t('prod.optional')}</em>
+                    <strong>{t('sale.charger')}</strong>
+                    <em>{t('sale.chargerNote')}</em>
                   </span>
-                  <select
-                    value={line.chargerId}
-                    onChange={(event) => setLine(index, { chargerId: event.target.value })}
-                  >
-                    <option value="">{t('sale.chargerNone')}</option>
-                    {chargers.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {t('sale.modelInStock', { name: entry.label, n: count(entry.qty) })}
-                      </option>
-                    ))}
-                  </select>
-                  {line.chargerId ? (
-                    chargerShort.has(line.chargerId) ? (
-                      <p className={styles.lineWarn}>{t('sale.chargerShort')}</p>
-                    ) : (
-                      <small className={styles.hint}>
-                        {t('sale.chargerNote', { n: count(line.chargerQty || 1) })}
-                      </small>
-                    )
-                  ) : null}
                 </label>
+              ) : null}
+
+              {line.chargerQty > 0 ? (
+                <>
+                  <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
+                    <span>{t('sale.chargerWhich')}</span>
+                    <select
+                      value={line.chargerId}
+                      onChange={(event) => {
+                        const picked = chargers.find((entry) => entry.id === event.target.value)
+                        setLine(index, {
+                          chargerId: event.target.value,
+                          ...(picked?.price ? { chargerPrice: String(picked.price) } : {}),
+                        })
+                      }}
+                    >
+                      {chargers.length === 0 ? <option value="">{t('sale.chargerNoneInStore')}</option> : null}
+                      {chargers.map((entry) => (
+                        <option key={entry.id} value={entry.id}>
+                          {t('sale.modelInStock', { name: entry.label, n: count(entry.qty) })}
+                        </option>
+                      ))}
+                    </select>
+                    {chargerShort.has(line.chargerId) ? (
+                      <p className={styles.lineWarn}>{t('sale.chargerShort')}</p>
+                    ) : null}
+                  </label>
+                  <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
+                    <span>
+                      {t('sale.chargerPrice')}
+                      <em>{t('common.required')}</em>
+                    </span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.01"
+                      value={line.chargerPrice}
+                      onChange={(event) => setLine(index, { chargerPrice: event.target.value })}
+                      required
+                    />
+                  </label>
+                </>
               ) : null}
             </div>
           ))}
@@ -580,7 +645,7 @@ export function NewSaleDialog({
             onClick={() =>
               setLines((current) => [
                 ...current,
-                { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '', chargerId: '' },
+                { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '', chargerOn: false, chargerId: '', chargerPrice: '' },
               ])
             }
           >
