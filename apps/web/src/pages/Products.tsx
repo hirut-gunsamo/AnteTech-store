@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAuth } from '../auth/context'
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { icons } from '../components/icons'
 import { DeleteProductDialog } from '../components/products/DeleteProductDialog'
 import { EditProductDialog } from '../components/products/EditProductDialog'
@@ -12,6 +13,7 @@ import { api } from '../lib/api'
 import { count, currency } from '../lib/format'
 import { useCategories } from '../lib/categories'
 import { useT } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { useToasts } from '../lib/toasts'
 import type { ProductRow } from '../lib/types'
 import styles from './Products.module.css'
@@ -56,6 +58,7 @@ export default function Products() {
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   const [category, setCategory] = useState('ALL')
+  const [search, setSearch] = useState('')
   // One tab per category the Owner has, after All.
   const { categories } = useCategories()
   const tabs = [{ value: 'ALL', label: t('inv.tabAll') }, ...categories.map((entry) => ({ value: entry.id, label: entry.name }))]
@@ -94,9 +97,11 @@ export default function Products() {
   const rows = useMemo(
     () =>
       (products ?? []).filter(
-        (product) => category === 'ALL' || product.categoryId === category,
+        (product) =>
+          (category === 'ALL' || product.categoryId === category) &&
+          matches(search, product.name, product.sku, product.productCategory?.name, product.type?.name),
       ),
-    [products, category],
+    [products, category, search],
   )
 
   const heldOf = (product: ProductRow) =>
@@ -161,12 +166,14 @@ export default function Products() {
           </div>
         </div>
 
+        <SearchBox alone value={search} onChange={setSearch} placeholder={t('prod.searchPlaceholder')} />
+
         {error ? <Empty>{error}</Empty> : null}
 
         {products === null ? (
           <Empty>{t('common.loading')}</Empty>
         ) : rows.length === 0 ? (
-          <Empty>{t('prod.none')}</Empty>
+          <Empty>{search ? t('common.noMatch') : t('prod.none')}</Empty>
         ) : (
           <div className={styles.scroll}>
             <table className={styles.table}>

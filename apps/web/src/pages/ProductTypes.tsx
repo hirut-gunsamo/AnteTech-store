@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { TypeDialog } from '../components/products/TypeDialog'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { useCategories } from '../lib/categories'
 import { useT } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { useToasts } from '../lib/toasts'
 import type { TypeNode } from '../lib/types'
 import base from './Products.module.css'
@@ -57,7 +59,13 @@ export default function ProductTypes() {
     }
   }
 
+  const [search, setSearch] = useState('')
   const active = (list: TypeNode[]) => list.filter((node) => node.isActive)
+  // A brand that matches keeps all its models; otherwise only matching models.
+  const childrenOf = (root: TypeNode) =>
+    matches(search, root.name)
+      ? active(root.children)
+      : active(root.children).filter((child) => matches(search, root.name, child.name))
 
   return (
     <div className={base.page}>
@@ -73,12 +81,16 @@ export default function ProductTypes() {
         </div>
       </header>
 
+      <SearchBox alone value={search} onChange={setSearch} placeholder={t('types.searchPlaceholder')} />
+
       {error ? <Empty>{error}</Empty> : null}
 
       {categories.map((category) => {
         // Serialized goods go brand -> model; counted goods stay one level.
         const isPhone = category.kind === 'SERIALIZED'
-        const roots = active((types ?? []).filter((node) => node.categoryId === category.id))
+        const roots = active((types ?? []).filter((node) => node.categoryId === category.id)).filter(
+          (root) => matches(search, root.name) || childrenOf(root).length > 0,
+        )
 
         return (
           <Card key={category.id}>
@@ -99,7 +111,7 @@ export default function ProductTypes() {
             {types === null ? (
               <Empty>{t('common.loading')}</Empty>
             ) : roots.length === 0 ? (
-              <Empty>{t('prod.noTypes')}</Empty>
+              <Empty>{search ? t('common.noMatch') : t('prod.noTypes')}</Empty>
             ) : (
               <div className={base.scroll}>
                 <table className={base.table}>
@@ -116,7 +128,7 @@ export default function ProductTypes() {
                   </thead>
                   <tbody>
                     {roots.flatMap((root) => {
-                      const children = active(root.children)
+                      const children = childrenOf(root)
 
                       if (!isPhone || children.length === 0) {
                         return [

@@ -2,11 +2,13 @@ import { useEffect, useState, type FormEvent } from 'react'
 
 import { useAuth } from '../auth/context'
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { useBranchList } from '../lib/branches'
 import { count, currency, shortDate } from '../lib/format'
 import { useT } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { useToasts } from '../lib/toasts'
 import type { ExpenseReport } from '../lib/types'
 import panel from '../components/inventory/Panel.module.css'
@@ -173,6 +175,7 @@ export default function Expenses() {
   const [data, setData] = useState<ExpenseReport | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [adding, setAdding] = useState(false)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -216,6 +219,10 @@ export default function Expenses() {
 
   const canDelete = (row: ExpenseReport['expenses'][number]) => isOwner || row.recordedBy.id === user?.id
 
+  const shownExpenses = (data?.expenses ?? []).filter((row) =>
+    matches(search, row.reason, row.note, row.branch.name, row.recordedBy.name),
+  )
+
   return (
     <div className={base.page}>
       <header className={base.head}>
@@ -256,6 +263,7 @@ export default function Expenses() {
 
       <Card>
         <div className={styles.filters} style={{ marginBottom: 0 }}>
+          <SearchBox value={search} onChange={setSearch} placeholder={t('exp.searchPlaceholder')} />
           <label>
             {t('led.from')}
             <input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} />
@@ -332,6 +340,8 @@ export default function Expenses() {
           <Empty>{t('common.loading')}</Empty>
         ) : data.expenses.length === 0 ? (
           <Empty>{t('exp.none')}</Empty>
+        ) : shownExpenses.length === 0 ? (
+          <Empty>{t('common.noMatch')}</Empty>
         ) : (
           <div className={base.scroll}>
             <table className={base.table}>
@@ -346,7 +356,7 @@ export default function Expenses() {
                 </tr>
               </thead>
               <tbody>
-                {data.expenses.map((row) => (
+                {shownExpenses.map((row) => (
                   <tr key={row.id}>
                     <td data-label={t('req.date')}>{shortDate(row.expenseDate)}</td>
                     <td data-label={t('exp.reason')} className={base.strong}>

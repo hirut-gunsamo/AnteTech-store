@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/context'
 import { AddAssetDialog } from '../components/assets/AddAssetDialog'
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { count, currency, shortDate } from '../lib/format'
 import { useT, type TranslationKey } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { useToasts } from '../lib/toasts'
 import type {
   AssetCategory,
@@ -56,6 +58,7 @@ export default function Equipment() {
   const [category, setCategory] = useState<AssetCategory | 'ALL'>('ALL')
   const [status, setStatus] = useState<AssetStatus | 'ALL'>('ALL')
   const [branch, setBranch] = useState('ALL')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -90,9 +93,10 @@ export default function Equipment() {
         (asset) =>
           (category === 'ALL' || asset.category === category) &&
           (status === 'ALL' || asset.status === status) &&
-          (branch === 'ALL' || asset.location.id === branch),
+          (branch === 'ALL' || asset.location.id === branch) &&
+          matches(search, asset.name, asset.serialNumber, asset.location.name, asset.note),
       ),
-    [assets, category, status, branch],
+    [assets, category, status, branch, search],
   )
 
   // Retired equipment is history: counting it would overstate what the
@@ -173,6 +177,7 @@ export default function Equipment() {
 
       <Card>
         <div className={styles.filters}>
+          <SearchBox value={search} onChange={setSearch} placeholder={t('asset.searchPlaceholder')} />
           <select
             className={styles.select}
             value={category}

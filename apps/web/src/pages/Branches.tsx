@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useAuth } from '../auth/context'
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { BranchDialog } from '../components/branches/BranchDialog'
 import { icons } from '../components/icons'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { count } from '../lib/format'
 import { useT, type Translate, type TranslationKey } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { useToasts } from '../lib/toasts'
 import type { BranchRow } from '../lib/types'
 import styles from './Branches.module.css'
@@ -122,6 +124,8 @@ export default function Branches() {
   }, [openMenu])
 
   const rows = useMemo(() => branches ?? [], [branches])
+  const [search, setSearch] = useState('')
+  const shown = rows.filter((branch) => matches(search, branch.name))
 
   const isOwner = user?.role === 'OWNER'
 
@@ -231,8 +235,11 @@ export default function Branches() {
       </header>
 
       <Card>
+        <SearchBox alone value={search} onChange={setSearch} placeholder={t('branches.searchPlaceholder')} />
         {rows.length === 0 ? (
           <Empty>{t('branches.empty')}</Empty>
+        ) : shown.length === 0 ? (
+          <Empty>{t('common.noMatch')}</Empty>
         ) : (
           <div className={styles.scroll}>
             <table className={styles.table}>
@@ -249,7 +256,7 @@ export default function Branches() {
               </thead>
 
               <tbody>
-                {rows.map((branch) => {
+                {shown.map((branch) => {
                   // The main store is fixed: every delivery enters there, so
                   // it is only ever renamed.
                   const isMain = branch.isMainStock

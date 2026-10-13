@@ -1,0 +1,51 @@
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 360px;
+}
+
+/* Above a list, with no filter bar to sit in. */
+.alone {
+  margin-bottom: 14px;
+}
+
+.icon {
+  position: absolute;
+  left: 11px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search input.input {
+  width: 100%;
+  padding: 9px 12px 9px 33px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+
+.search input.input::placeholder {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.search input.input:focus-visible {
+  border-color: var(--brand-dark);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 40%, transparent);
+}
+
+@media (max-width: 720px) {
+  .search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+}

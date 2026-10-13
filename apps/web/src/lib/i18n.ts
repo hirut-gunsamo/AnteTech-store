@@ -1359,6 +1359,18 @@ export const en = {
   'ds.deductions': 'Deductions',
   'ds.expenses': 'Expenses',
   'ds.net': 'Left',
+  'common.noMatch': 'Nothing matches your search.',
+  'exp.searchPlaceholder': 'Search by reason, note, store or who recorded it…',
+  'asset.searchPlaceholder': 'Search by name, serial number, store or note…',
+  'ded.searchPlaceholder': 'Search by seller, store, item or note…',
+  'tr.searchPlaceholder': 'Search by store, product, driver or plate…',
+  'prod.searchPlaceholder': 'Search by name, SKU, category or type…',
+  'cat.searchPlaceholder': 'Search categories…',
+  'types.searchPlaceholder': 'Search by brand, model or type…',
+  'branches.searchPlaceholder': 'Search stores…',
+  'pay.searchPlaceholder': 'Search by seller, store or note…',
+  'com.searchPlaceholder': 'Search by seller, store or category…',
+  'appr.searchPlaceholder': 'Search by reference, requester or items…',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2684,6 +2696,18 @@ export const am: Record<TranslationKey, string> = {
   'ds.deductions': 'ተቀናሽ',
   'ds.expenses': 'ወጪዎች',
   'ds.net': 'የቀረው',
+  'common.noMatch': 'ከፍለጋዎ ጋር የሚመሳሰል የለም።',
+  'exp.searchPlaceholder': 'በምክንያት፣ በማስታወሻ፣ በመደብር ወይም በመዘገበው ይፈልጉ…',
+  'asset.searchPlaceholder': 'በስም፣ በመለያ ቁጥር፣ በመደብር ወይም በማስታወሻ ይፈልጉ…',
+  'ded.searchPlaceholder': 'በሻጭ፣ በመደብር፣ በዕቃ ወይም በማስታወሻ ይፈልጉ…',
+  'tr.searchPlaceholder': 'በመደብር፣ በምርት፣ በሹፌር ወይም በታርጋ ይፈልጉ…',
+  'prod.searchPlaceholder': 'በስም፣ SKU፣ በምድብ ወይም በዓይነት ይፈልጉ…',
+  'cat.searchPlaceholder': 'ምድቦችን ይፈልጉ…',
+  'types.searchPlaceholder': 'በብራንድ፣ በሞዴል ወይም በዓይነት ይፈልጉ…',
+  'branches.searchPlaceholder': 'መደብሮችን ይፈልጉ…',
+  'pay.searchPlaceholder': 'በሻጭ፣ በመደብር ወይም በማስታወሻ ይፈልጉ…',
+  'com.searchPlaceholder': 'በሻጭ፣ በመደብር ወይም በምድብ ይፈልጉ…',
+  'appr.searchPlaceholder': 'በማጣቀሻ፣ በጠያቂ ወይም በዕቃ ይፈልጉ…',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }

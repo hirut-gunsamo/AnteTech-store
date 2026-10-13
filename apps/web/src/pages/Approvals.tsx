@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { useAuth } from '../auth/context'
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { icons } from '../components/icons'
 import { RejectDialog } from '../components/approvals/RejectDialog'
 import { ApproveRequestDialog } from '../components/requests/ApproveRequestDialog'
@@ -404,6 +405,7 @@ export default function Approvals() {
 
       <Card>
         <div className={styles.filters}>
+          <SearchBox value={search} onChange={change(setSearch)} placeholder={t('appr.searchPlaceholder')} />
           <label className={styles.dates}>
             <input
               type="date"
