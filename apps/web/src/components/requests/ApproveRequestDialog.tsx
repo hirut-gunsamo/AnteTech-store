@@ -42,9 +42,6 @@ export function ApproveRequestDialog({
 
   // Who is driving it over. Asked for here because the branch waiting for the
   // goods is told before the van leaves, not after it arrives.
-  const [driverName, setDriverName] = useState('')
-  const [driverPhone, setDriverPhone] = useState('')
-  const [vehiclePlate, setVehiclePlate] = useState('')
 
   // Starts at what was asked for, so approving in full is still one click.
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
@@ -166,21 +163,11 @@ export function ApproveRequestDialog({
   const allValid = lines.every((line) => line.valid)
   const anyOverStock = lines.some((line) => line.overStock)
 
-  // Same rule the API applies, so the button disables rather than the request
-  // failing.
-  const phoneOk =
-    /^[+()\d][\d\s()+-]*$/.test(driverPhone.trim()) &&
-    driverPhone.trim().length >= 7
-
-  const driverOk =
-    driverName.trim().length >= 2 && phoneOk && vehiclePlate.trim().length >= 2
-
   const canSubmit =
     !busy &&
     allValid &&
     approving > 0 &&
     !anyOverStock &&
-    driverOk &&
     sourceBranchId !== ''
 
   function setQuantity(itemId: string, value: string) {
@@ -220,9 +207,6 @@ export function ApproveRequestDialog({
         method: 'PATCH',
         body: {
           sourceBranchId,
-          driverName: driverName.trim(),
-          driverPhone: driverPhone.trim(),
-          vehiclePlate: vehiclePlate.trim(),
           ...(note.trim() ? { notes: note.trim() } : {}),
           // Decided one by one: the server sends what was approved.
           ...(decided
@@ -402,57 +386,6 @@ export function ApproveRequestDialog({
             <p className={styles.blocked}>{t('dlg.nothingApproved')}</p>
           ) : null}
 
-          <section className={styles.gridGroup}>
-            <h3 className={styles.gridHead}>{t('dlg.driver')}</h3>
-
-            <div className={styles.driverFields}>
-              <label className={styles.field}>
-                <span>
-                  {t('dlg.driverName')}<em>{t('common.required')}</em>
-                </span>
-                <input
-                  value={driverName}
-                  onChange={(event) => setDriverName(event.target.value)}
-                  maxLength={120}
-                  placeholder={t('dlg.phDriverName')}
-                  required
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>
-                  {t('dlg.driverPhone')}<em>{t('common.required')}</em>
-                </span>
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  value={driverPhone}
-                  onChange={(event) => setDriverPhone(event.target.value)}
-                  maxLength={24}
-                  placeholder="0911 111 111"
-                  required
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>
-                  {t('dlg.vehiclePlate')}<em>{t('common.required')}</em>
-                </span>
-                <input
-                  value={vehiclePlate}
-                  onChange={(event) => setVehiclePlate(event.target.value)}
-                  maxLength={40}
-                  placeholder={t('dlg.phPlate')}
-                  required
-                />
-              </label>
-            </div>
-
-            {driverPhone.trim() !== '' && !phoneOk ? (
-              <p className={styles.lineWarn}>{t('dlg.phoneInvalid')}</p>
-            ) : null}
-          </section>
-
           <label className={styles.field}>
             <span>{t('dlg.note')}</span>
             <input
@@ -468,13 +401,15 @@ export function ApproveRequestDialog({
           </label>
 
           {error ? <p className={styles.error}>{error}</p> : null}
+          {/* Why the button is off, next to it rather than up in the list. */}
+          {anyOverStock ? <p className={styles.blocked}>{t('dlg.overStockAll', { store: sourceName ?? '' })}</p> : null}
 
           <div className={styles.actions}>
             <button type="button" className={styles.cancel} onClick={onClose}>
               {t('common.cancel')}
             </button>
             <button type="submit" className={styles.submit} disabled={!canSubmit}>
-              {busy ? t('dlg.approving') : t('dlg.approveAndTransfer')}
+              {busy ? t('dlg.approving') : t('dlg.approveOnly')}
             </button>
           </div>
         </form>
