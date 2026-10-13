@@ -87,7 +87,9 @@ export async function createSale(
 
   const products = await prisma.product.findMany({
     where: { id: { in: productIds }, status: "ACTIVE" },
-    select: { id: true, price: true, category: true, sku: true },
+    // costPrice is read only to stamp each line with what it cost; it is
+    // never sent back to the seller.
+    select: { id: true, price: true, costPrice: true, category: true, sku: true },
   });
 
   if (products.length !== new Set(productIds).size) {
@@ -164,6 +166,8 @@ export async function createSale(
       productId: item.productId,
       quantity: item.quantity,
       unitPrice,
+      // What it cost when sold, so later price changes never rewrite profit.
+      unitCost: product.costPrice,
       lineTotal,
     };
   });

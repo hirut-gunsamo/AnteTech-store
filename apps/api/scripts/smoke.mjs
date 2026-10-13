@@ -95,6 +95,18 @@ async function main() {
   const charger = chargerRes.body.product;
   check("accessory product created", chargerRes.status === 201 && charger.category === "QUANTITY", JSON.stringify(chargerRes.body));
 
+  // --- Buying price (Owner only) ---------------------------------------------
+  const costed = (await call(owner, "POST", "/api/products", {
+    typeId: model.id, price: 12000, storage: "64GB", color: `Grey ${RUN}`, costPrice: 9000,
+  }));
+  check("the Owner sets a buying price on a product", costed.status === 201 && Number(costed.body.product?.costPrice) === 9000, JSON.stringify(costed.body).slice(0, 200));
+  const costedRead = await call(owner, "GET", `/api/products/${costed.body.product?.id}`);
+  check("the Owner reads the buying price back", Number(costedRead.body.product?.costPrice) === 9000, JSON.stringify(costedRead.body).slice(0, 200));
+  const recosted = await call(owner, "PATCH", `/api/products/${costed.body.product?.id}`, { costPrice: 9500 });
+  check("the Owner changes the buying price", recosted.status === 200 && Number(recosted.body.product?.costPrice) === 9500, JSON.stringify(recosted.body).slice(0, 200));
+  const ownerList = (await call(owner, "GET", "/api/products")).body.products ?? [];
+  check("the Owner's product list carries buying prices", Number(ownerList.find((p) => p.id === costed.body.product?.id)?.costPrice) === 9500);
+
   // --- Sellers --------------------------------------------------------------
   const sellerInMain = await call(owner, "POST", "/api/users", {
     name: "Nobody", email: `main-${RUN}@antetech.local`, password: "password123", phone: "0911 111 111", branchId: main.id,
@@ -114,6 +126,9 @@ async function main() {
 
   const a = await login(`a-${RUN}@antetech.local`, "password123");
   const b = await login(`b-${RUN}@antetech.local`, "password123");
+
+  const sellerList = (await call(a, "GET", "/api/products")).body.products ?? [];
+  check("a seller never receives a buying price", sellerList.length > 0 && sellerList.every((p) => p.costPrice == null), JSON.stringify(sellerList.find((p) => p.costPrice != null) ?? {}).slice(0, 200));
 
   // --- Stock-in: main store only ---------------------------------------------
   const intoSelling = await call(owner, "POST", "/api/inventory/stock-in", { productId: phone.id, locationId: storeA.id, quantity: 5 });

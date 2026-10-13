@@ -91,7 +91,14 @@ export async function getProductController(
   }>,
   reply: FastifyReply,
 ) {
-  const product = await getProductById(request.params.id);
+  const viewer = await loadViewer(request);
+
+  if (!viewer) {
+    return reply.status(403).send({ message: "User account is inactive" });
+  }
+
+  // The buying price goes to the Owner only.
+  const product = await getProductById(request.params.id, undefined, viewer.role === "OWNER");
 
   if (!product) {
     return reply.status(404).send({

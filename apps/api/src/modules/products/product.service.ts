@@ -94,6 +94,7 @@ export async function createProduct(data: CreateProductInput) {
             name,
             description: data.description,
             price,
+            costPrice: data.costPrice ?? null,
             category: category as never,
             typeId: data.typeId,
             categoryId: chosen.categoryId,
@@ -117,7 +118,7 @@ export async function createProduct(data: CreateProductInput) {
           });
         }
 
-        return getProductById(product.id, tx);
+        return getProductById(product.id, tx, true);
       });
     } catch (error) {
       const isDuplicateSku =
@@ -137,12 +138,16 @@ type PrismaTransaction = Parameters<
   Parameters<typeof prisma.$transaction>[0]
 >[0];
 
+/** One product. Its buying price is included only when `withCost` is set,
+ * which only the Owner's routes do. */
 export async function getProductById(
   id: string,
   db: typeof prisma | PrismaTransaction = prisma,
+  withCost = false,
 ) {
   return db.product.findUnique({
     where: { id },
+    omit: { costPrice: !withCost },
 
     include: {
       phoneDetails: true,
@@ -158,6 +163,8 @@ export async function getProductById(
 export async function getProducts(viewer: Viewer) {
   return prisma.product.findMany({
     where: { status: "ACTIVE" },
+    // Buying prices go to the Owner only.
+    omit: { costPrice: viewer.role !== "OWNER" },
 
     include: {
       phoneDetails: true,
@@ -210,6 +217,7 @@ export async function updateProduct(id: string, data: UpdateProductInput) {
           ? { description: data.description?.trim() || null }
           : {}),
         ...(price !== undefined ? { price } : {}),
+        ...(data.costPrice !== undefined ? { costPrice: data.costPrice } : {}),
       },
     });
 
@@ -233,7 +241,7 @@ export async function updateProduct(id: string, data: UpdateProductInput) {
       });
     }
 
-    return getProductById(id, tx);
+    return getProductById(id, tx, true);
   });
 }
 
