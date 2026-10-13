@@ -326,28 +326,41 @@ export function ApproveRequestDialog({
 
               <label className={styles.qtyField}>
                 <span>{t('dlg.approveQty')}</span>
-                {/* A dropdown from what was asked for down to none: approve as
-                    it is, or pick fewer. */}
-                <select
-                  value={line.raw}
-                  onChange={(event) => setQuantity(line.item.id, event.target.value)}
-                  aria-label={t('dlg.approveQtyFor', {
-                    product: line.item.product.name,
-                  })}
-                  required
-                >
-                  {Array.from({ length: maxOf(line.item) + 1 }, (_, index) => maxOf(line.item) - index).map((n) => (
-                    <option key={n} value={String(n)}>
-                      {n === maxOf(line.item)
-                        ? t('dlg.qtyAll', { n })
-                        : n === 0
-                          ? t('dlg.qtyNone')
-                          : line.inStock !== null && n > line.inStock
-                            ? t('dlg.qtyOver', { n })
-                            : String(n)}
-                    </option>
-                  ))}
-                </select>
+                {/* A number box with up and down arrows: approve as it is,
+                    or step it down, never above what was asked for. */}
+                <div className={styles.stepper}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    max={maxOf(line.item)}
+                    step="1"
+                    value={line.raw}
+                    onChange={(event) => setQuantity(line.item.id, event.target.value)}
+                    aria-label={t('dlg.approveQtyFor', {
+                      product: line.item.product.name,
+                    })}
+                    required
+                  />
+                  <div className={styles.stepButtons}>
+                    <button
+                      type="button"
+                      aria-label="+1"
+                      disabled={line.qty >= maxOf(line.item)}
+                      onClick={() => setQuantity(line.item.id, String(Math.min(maxOf(line.item), line.qty + 1)))}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="-1"
+                      disabled={line.qty <= 0}
+                      onClick={() => setQuantity(line.item.id, String(Math.max(0, line.qty - 1)))}
+                    >
+                      ▼
+                    </button>
+                  </div>
+                </div>
               </label>
 
               {!line.valid ? (
