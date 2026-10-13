@@ -14,6 +14,8 @@ import Commission from './pages/Commission'
 import Approvals from './pages/Approvals'
 import Branches from './pages/Branches'
 import Inventory from './pages/Inventory'
+import ItemsOut from './pages/ItemsOut'
+import DamageLoss from './pages/DamageLoss'
 import Products from './pages/Products'
 import ProfitLoss from './pages/ProfitLoss'
 import ProductTypes from './pages/ProductTypes'
@@ -95,6 +97,8 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/users" element={<Users />} />
             <Route path="/inventory" element={<Inventory />} />
+            <Route path="/inventory/items-out" element={<ItemsOut />} />
+            <Route path="/inventory/damage-loss" element={<DamageLoss />} />
             <Route path="/products" element={<Products />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/product-types" element={<ProductTypes />} />
