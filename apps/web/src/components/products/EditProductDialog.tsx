@@ -104,10 +104,7 @@ export function EditProductDialog({
         <header className={styles.head}>
           <div>
             <h2>{t('prod.editTitle')}</h2>
-            <p className="tabular">
-              {product.sku}
-              {product.type ? ` · ${product.type.name}` : ''}
-            </p>
+            {product.type ? <p>{product.type.name}</p> : null}
           </div>
           <button type="button" onClick={onClose} aria-label={t('common.close')}>
             ✕

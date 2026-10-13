@@ -180,7 +180,6 @@ export default function Products() {
               <thead>
                 <tr>
                   <th scope="col">{t('prod.name')}</th>
-                  <th scope="col">{t('prod.sku')}</th>
                   <th scope="col">{t('prod.category')}</th>
                   <th scope="col">{t('prod.type')}</th>
                   <th scope="col">{t('prod.details')}</th>
@@ -205,9 +204,6 @@ export default function Products() {
                         {product.description ? (
                           <em className={styles.sub}>{product.description}</em>
                         ) : null}
-                      </td>
-                      <td data-label={t('prod.sku')} className="tabular">
-                        {product.sku}
                       </td>
                       <td data-label={t('prod.category')}>
                         {product.productCategory?.name ?? '—'}
