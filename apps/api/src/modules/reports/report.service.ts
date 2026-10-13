@@ -668,7 +668,8 @@ export async function getInventoryReport(
     };
 
     const category = balance.product.category as Category;
-    const value = balance.product.price.toNumber() * balance.quantity;
+    // A product with no suggested price adds nothing to stock value.
+    const value = (balance.product.price?.toNumber() ?? 0) * balance.quantity;
 
     branch.byCategory[category].quantity += balance.quantity;
     branch.byCategory[category].revenue += value;
@@ -748,7 +749,7 @@ export async function getStockChange(viewer: Viewer) {
   for (const balance of balances) {
     const category = balance.product.category as Category;
     onHand[category].quantity += balance.quantity;
-    stockValue += balance.product.price.toNumber() * balance.quantity;
+    stockValue += (balance.product.price?.toNumber() ?? 0) * balance.quantity;
   }
 
   // Net movement into the viewer's scope: arrivals count up, departures down.
@@ -1060,7 +1061,7 @@ export async function getTopProducts(
       sku: item.product.sku,
       name: item.product.name,
       category: item.product.category,
-      price: item.product.price.toNumber(),
+      price: item.product.price?.toNumber() ?? 0,
       units: 0,
       revenue: 0,
     };

@@ -210,7 +210,7 @@ export default function Products() {
                       </td>
                       <td data-label={t('prod.details')}>{detailOf(product)}</td>
                       <td data-label={t('prod.price')} className="tabular">
-                        {currency(Number(product.price))}
+                        {product.price == null ? '—' : currency(Number(product.price))}
                       </td>
                       <td data-label={t('prod.costPrice')} className="tabular">
                         {product.costPrice == null ? '—' : currency(Number(product.costPrice))}

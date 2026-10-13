@@ -6,7 +6,8 @@ const baseProductSchema = z.object({
   typeId: z.string().min(1),
   name: z.string().min(2).max(150).optional(),
   description: z.string().max(500).optional(),
-  price: z.coerce.number().nonnegative(),
+  // A suggestion only: the seller enters the real price at each sale.
+  price: z.coerce.number().nonnegative().nullable().optional(),
   // What the business pays for one, for profit and loss. Owner only.
   costPrice: z.coerce.number().nonnegative().max(100_000_000).nullable().optional(),
 });
@@ -24,7 +25,7 @@ export const updateProductSchema = z
   .object({
     name: z.string().trim().min(2).max(150).optional(),
     description: z.string().max(500).nullable().optional(),
-    price: z.coerce.number().nonnegative().optional(),
+    price: z.coerce.number().nonnegative().nullable().optional(),
     // null clears a buying price typed by mistake.
     costPrice: z.coerce.number().nonnegative().max(100_000_000).nullable().optional(),
     // Serialized goods only.

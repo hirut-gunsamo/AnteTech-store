@@ -144,8 +144,9 @@ export function ProductDialog({
 
   const nameValid = name.trim() === '' || name.trim().length >= 2
 
+  // Optional: a suggestion only, since sellers enter the real price.
   const priceValid =
-    price.trim() !== '' && Number.isFinite(priceValue) && priceValue >= 0
+    price.trim() === '' || (Number.isFinite(priceValue) && priceValue >= 0)
 
   const costValid =
     costPrice.trim() === '' || (Number.isFinite(Number(costPrice)) && Number(costPrice) >= 0)
@@ -165,7 +166,7 @@ export function ProductDialog({
 
     const body = {
       typeId: effectiveTypeId,
-      price: priceValue,
+      ...(price.trim() !== '' ? { price: priceValue } : {}),
       ...(costPrice.trim() !== '' ? { costPrice: Number(costPrice) } : {}),
       ...(name.trim() ? { name: name.trim() } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
@@ -327,7 +328,7 @@ export function ProductDialog({
 
           <label className={styles.field}>
             <span>
-              {t('prod.price')}<em>{t('common.required')}</em>
+              {t('prod.price')}<em>{t('prod.optional')}</em>
             </span>
             <input
               type="number"
@@ -336,8 +337,8 @@ export function ProductDialog({
               step="0.01"
               value={price}
               onChange={(event) => setPrice(event.target.value)}
-              required
             />
+            <small className={styles.hint}>{t('prod.priceNote')}</small>
           </label>
 
           <label className={styles.field}>

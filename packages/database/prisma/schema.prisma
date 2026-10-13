@@ -164,7 +164,9 @@ model Product {
   name        String
   category    ProductCategory
   description String?
-  price       Decimal         @db.Decimal(12, 2)
+  /// A suggested selling price only. The real price is entered at each sale
+  /// (SaleItem.unitPrice), since prices are agreed with the customer.
+  price       Decimal?        @db.Decimal(12, 2)
   /// What the business pays for one, for profit and loss. Owner only: the
   /// API leaves it out of every response unless the Owner asks for it.
   costPrice   Decimal?        @db.Decimal(12, 2)

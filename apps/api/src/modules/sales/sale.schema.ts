@@ -1,13 +1,16 @@
 import { z } from "zod";
 
-// A salesperson records what they are selling. Prices come from the product
-// catalogue, never from the client, so a sale cannot be under-reported.
+// A salesperson records what they are selling, and the price each item was
+// sold for: prices are agreed with the customer, so the product's price is
+// only a suggestion, used when no price is sent.
 export const createSaleSchema = z.object({
   items: z
     .array(
       z.object({
         productId: z.string().min(1),
         quantity: z.coerce.number().int().positive(),
+        // What one sold for. Left out, the product's suggested price is used.
+        unitPrice: z.coerce.number().positive().max(100_000_000).optional(),
 
         // One IMEI or serial number per unit of a serialized product. The
         // service checks the count against the quantity; counted goods must

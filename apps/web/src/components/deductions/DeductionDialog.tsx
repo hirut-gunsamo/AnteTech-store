@@ -120,7 +120,13 @@ export function DeductionDialog({
       product,
       auto,
       value,
-      valid: product != null && qtyValid && Number.isFinite(value) && value >= 0,
+      // An item with no suggested price needs its amount typed in.
+      valid:
+        product != null &&
+        qtyValid &&
+        Number.isFinite(value) &&
+        value >= 0 &&
+        (typed !== null || product.price > 0),
     }
   })
 

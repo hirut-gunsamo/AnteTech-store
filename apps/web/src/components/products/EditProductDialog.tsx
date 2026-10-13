@@ -26,7 +26,7 @@ export function EditProductDialog({
   const isPhone = product.category === 'SERIALIZED'
 
   const [name, setName] = useState(product.name)
-  const [price, setPrice] = useState(String(Number(product.price)))
+  const [price, setPrice] = useState(product.price == null ? '' : String(Number(product.price)))
   const [costPrice, setCostPrice] = useState(
     product.costPrice == null ? '' : String(Number(product.costPrice)),
   )
@@ -51,9 +51,7 @@ export function EditProductDialog({
 
   const valid =
     name.trim().length >= 2 &&
-    price.trim() !== '' &&
-    Number.isFinite(priceValue) &&
-    priceValue >= 0 &&
+    (price.trim() === '' || (Number.isFinite(priceValue) && priceValue >= 0)) &&
     (costPrice.trim() === '' || (Number.isFinite(Number(costPrice)) && Number(costPrice) >= 0))
 
   async function handleSubmit(event: FormEvent) {
@@ -67,7 +65,8 @@ export function EditProductDialog({
     const body = {
       name: name.trim(),
       description: description.trim() || null,
-      price: priceValue,
+      // Blank clears the suggested price: sellers enter the real one.
+      price: price.trim() === '' ? null : priceValue,
       // Blank clears a buying price typed by mistake.
       costPrice: costPrice.trim() === '' ? null : Number(costPrice),
       ...(isPhone
@@ -134,7 +133,7 @@ export function EditProductDialog({
           <label className={styles.field}>
             <span>
               {t('prod.price')}
-              <em>{t('common.required')}</em>
+              <em>{t('prod.optional')}</em>
             </span>
             <input
               type="number"
@@ -143,7 +142,6 @@ export function EditProductDialog({
               step="0.01"
               value={price}
               onChange={(event) => setPrice(event.target.value)}
-              required
             />
           </label>
 

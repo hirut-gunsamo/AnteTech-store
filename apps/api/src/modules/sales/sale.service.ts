@@ -157,7 +157,12 @@ export async function createSale(
 
   const items = data.items.map((item) => {
     const product = catalogue.get(item.productId)!;
-    const unitPrice = product.price;
+    // The price the seller entered, else the product's suggested price.
+    const unitPrice =
+      item.unitPrice !== undefined ? new Prisma.Decimal(item.unitPrice) : product.price;
+    if (!unitPrice || unitPrice.lte(0)) {
+      throw new Error("PRICE_REQUIRED");
+    }
     const lineTotal = unitPrice.mul(item.quantity);
 
     subtotal = subtotal.add(lineTotal);

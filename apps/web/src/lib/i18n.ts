@@ -97,7 +97,7 @@ export const en = {
   'prod.category': 'Category',
   'prod.sku': 'Product code',
   'prod.name': 'Name',
-  'prod.price': 'Selling price',
+  'prod.price': 'Suggested selling price',
   'prod.description': 'Description',
   'prod.descriptionNote': 'optional',
   'prod.brand': 'Brand',
@@ -1301,6 +1301,9 @@ export const en = {
   'asset.editNote': 'Correct what was recorded. The item stays at its store.',
   'prod.costPrice': 'Buying price',
   'prod.costPriceNote': 'What you pay for one. Only you see it; it is used for profit and loss.',
+  'sale.unitPrice': 'Selling price (each)',
+  'sale.unitPriceHint': 'What the customer pays for one',
+  'prod.priceNote': 'Only a suggestion: sellers enter the real price on each sale.',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -1386,7 +1389,7 @@ export const am: Record<TranslationKey, string> = {
   'prod.category': 'ምድብ',
   'prod.sku': 'የምርት ኮድ',
   'prod.name': 'ስም',
-  'prod.price': 'የሽያጭ ዋጋ',
+  'prod.price': 'የሚመከር የሽያጭ ዋጋ',
   'prod.description': 'መግለጫ',
   'prod.descriptionNote': 'ከተፈለገ',
   'prod.brand': 'ብራንድ',
@@ -2568,6 +2571,9 @@ export const am: Record<TranslationKey, string> = {
   'asset.editNote': 'የተመዘገበውን ያስተካክሉ። ዕቃው በመደብሩ ይቆያል።',
   'prod.costPrice': 'የግዢ ዋጋ',
   'prod.costPriceNote': 'ለአንዱ የሚከፍሉት ዋጋ። እርስዎ ብቻ ያዩታል፤ ለትርፍና ኪሳራ ይጠቅማል።',
+  'sale.unitPrice': 'የመሸጫ ዋጋ (ለአንዱ)',
+  'sale.unitPriceHint': 'ደንበኛው ለአንዱ የሚከፍለው',
+  'prod.priceNote': 'ጥቆማ ብቻ ነው፤ ሻጮች በእያንዳንዱ ሽያጭ ትክክለኛውን ዋጋ ያስገባሉ።',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }

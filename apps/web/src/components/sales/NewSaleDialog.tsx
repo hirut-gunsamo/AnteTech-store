@@ -9,7 +9,9 @@ import { count, currency } from '../../lib/format'
 import type { InventorySummary } from '../../lib/types'
 import styles from '../inventory/Panel.module.css'
 
-type Line = { categoryId: string; typeId: string; productId: string; quantity: string; serials: string }
+// `price` is what one sells for: agreed with the customer, so the seller
+// enters it; the product's suggested price fills it in to start with.
+type Line = { categoryId: string; typeId: string; productId: string; quantity: string; price: string; serials: string }
 
 // Which kinds the API requires one IMEI / serial per unit for. A counted line
 // must NOT send serials at all, so it is left out of this map entirely.
@@ -43,7 +45,7 @@ export function NewSaleDialog({
   const [stock, setStock] = useState<InventorySummary | null>(null)
   const t = useT()
   const [lines, setLines] = useState<Line[]>([
-    { categoryId: '', typeId: '', productId: '', quantity: '1', serials: '' },
+    { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '' },
   ])
   const [cash, setCash] = useState('')
   const [method, setMethod] = useState<'CASH' | 'TRANSFER'>('CASH')
@@ -177,7 +179,9 @@ export function NewSaleDialog({
   const priced = lines.map((line) => {
     const product = available.find((entry) => entry.id === line.productId)
     const qty = Number(line.quantity)
-    const valid = product != null && Number.isInteger(qty) && qty > 0
+    const unitPrice = Number(line.price)
+    const priceValid = line.price.trim() !== '' && Number.isFinite(unitPrice) && unitPrice > 0
+    const valid = product != null && Number.isInteger(qty) && qty > 0 && priceValid
 
     // Only serialized goods are handed over as a specific physical unit; a
     // counted line must not send serials at all, or the API refuses it.
@@ -192,7 +196,9 @@ export function NewSaleDialog({
       qty,
       valid,
       overStock: product != null && qty > product.qty,
-      total: valid ? product.price * qty : 0,
+      unitPrice,
+      priceValid,
+      total: valid ? unitPrice * qty : 0,
       needsSerials,
       hintKey,
       serialList,
@@ -255,6 +261,7 @@ export function NewSaleDialog({
           items: priced.map((line) => ({
             productId: line.productId,
             quantity: line.qty,
+            unitPrice: line.unitPrice,
             ...(line.needsSerials ? { serials: line.serialList } : {}),
           })),
           cashReceived: cashValue,
@@ -357,7 +364,14 @@ export function NewSaleDialog({
                 <select
                   value={line.productId}
                   onChange={(event) =>
-                    setLine(index, { productId: event.target.value })
+                    setLine(index, {
+                      productId: event.target.value,
+                      // Start from the suggested price; the seller can change it.
+                      price: (() => {
+                        const suggested = available.find((entry) => entry.id === event.target.value)?.price ?? 0
+                        return suggested > 0 ? String(suggested) : ''
+                      })(),
+                    })
                   }
                   required
                 >
@@ -385,6 +399,22 @@ export function NewSaleDialog({
                   onChange={(event) =>
                     setLine(index, { quantity: event.target.value })
                   }
+                  required
+                />
+              </label>
+
+              <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
+                <span>
+                  {t('sale.unitPrice')}<em>{t('common.required')}</em>
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={line.price}
+                  onChange={(event) => setLine(index, { price: event.target.value })}
+                  placeholder={t('sale.unitPriceHint')}
                   required
                 />
               </label>
@@ -461,7 +491,7 @@ export function NewSaleDialog({
             onClick={() =>
               setLines((current) => [
                 ...current,
-                { categoryId: '', typeId: '', productId: '', quantity: '1', serials: '' },
+                { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '' },
               ])
             }
           >
