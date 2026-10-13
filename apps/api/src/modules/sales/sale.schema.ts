@@ -10,7 +10,10 @@ export const createSaleSchema = z.object({
         productId: z.string().min(1),
         quantity: z.coerce.number().int().positive(),
         // What one sold for. Left out, the product's suggested price is used.
-        unitPrice: z.coerce.number().positive().max(100_000_000).optional(),
+        // 0 is allowed only for an item given with another, such as the
+        // local charger that comes with a phone.
+        unitPrice: z.coerce.number().nonnegative().max(100_000_000).optional(),
+        included: z.boolean().optional(),
 
         // One IMEI or serial number per unit of a serialized product. The
         // service checks the count against the quantity; counted goods must

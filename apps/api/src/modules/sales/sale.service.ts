@@ -160,7 +160,9 @@ export async function createSale(
     // The price the seller entered, else the product's suggested price.
     const unitPrice =
       item.unitPrice !== undefined ? new Prisma.Decimal(item.unitPrice) : product.price;
-    if (!unitPrice || unitPrice.lte(0)) {
+    // An item given with a phone (its local charger) leaves stock at no
+    // price; everything else needs one.
+    if (!unitPrice || (unitPrice.lte(0) && !(item.included && unitPrice.eq(0)))) {
       throw new Error("PRICE_REQUIRED");
     }
     const lineTotal = unitPrice.mul(item.quantity);
