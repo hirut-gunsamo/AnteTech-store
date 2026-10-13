@@ -323,6 +323,9 @@ export function NewSaleDialog({
         </header>
 
         <form className={styles.body} onSubmit={handleSubmit}>
+          {/* Only this store's own stock can be sold: say so when it has none,
+              rather than showing empty lists. */}
+          {stock && available.length === 0 ? <p className={styles.warn}>{t('sale.noStock')}</p> : null}
           {priced.map((line, index) => (
             <div key={index} className={styles.saleLine}>
               {/* Category (Accessories), then type (Speaker), then every model
