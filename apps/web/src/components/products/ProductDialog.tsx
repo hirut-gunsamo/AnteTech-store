@@ -40,6 +40,8 @@ export function ProductDialog({
   // What the business pays for one, for profit and loss. Owner only.
   const [costPrice, setCostPrice] = useState('')
   const [description, setDescription] = useState('')
+  // Units on hand now, put straight into the Main Store on save.
+  const [quantity, setQuantity] = useState('')
 
   const [phoneModel, setPhoneModel] = useState('')
   const [storage, setStorage] = useState('')
@@ -138,8 +140,13 @@ export function ProductDialog({
   const costValid =
     costPrice.trim() === '' || (Number.isFinite(Number(costPrice)) && Number(costPrice) >= 0)
 
+  const quantityValue = Number(quantity)
+  const quantityValid =
+    quantity.trim() === '' || (Number.isInteger(quantityValue) && quantityValue >= 0)
+
   const valid =
     priceValid &&
+    quantityValid &&
     costValid &&
     validTypeId !== '' &&
     phoneModel.trim() !== ''
@@ -173,6 +180,24 @@ export function ProductDialog({
         method: 'POST',
         body,
       })
+
+      // The opening stock goes into the Main Store, as a stock-in would.
+      if (quantityValue > 0) {
+        try {
+          const { branches } = await api<{ branches: { id: string; isActive: boolean; isMainStock: boolean }[] }>(
+            '/api/branches?isActive=true',
+          )
+          const main = (branches ?? []).find((row) => row.isActive && row.isMainStock)
+          if (!main) throw new Error(t('prod.noMainStore'))
+          await api('/api/inventory/stock-in', {
+            method: 'POST',
+            body: { productId: payload.product.id, locationId: main.id, quantity: quantityValue },
+          })
+        } catch (caught) {
+          // The product is saved either way; only the stock needs adding again.
+          window.alert(t('prod.quantityFailed', { reason: caught instanceof Error ? caught.message : '' }))
+        }
+      }
 
       onDone(payload.product)
     } catch (caught) {
@@ -303,6 +328,22 @@ export function ProductDialog({
               />
             </label>
           ) : null}
+
+          <label className={styles.field}>
+            <span>
+              {t('prod.quantity')}<em>{t('prod.optional')}</em>
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              step="1"
+              value={quantity}
+              onChange={(event) => setQuantity(event.target.value)}
+              placeholder="0"
+            />
+            <small className={styles.hint}>{t('prod.quantityNote')}</small>
+          </label>
 
           <label className={styles.field}>
             <span>
