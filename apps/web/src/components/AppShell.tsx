@@ -67,6 +67,8 @@ const NAV: NavItem[] = [
     children: [
       // Sellers see the deliveries coming to their store and press Received.
       { to: '/transfers', labelKey: 'nav.transfers', noteKey: 'tr.note', icon: 'sync', roles: ['OWNER', 'SALES'] },
+      { to: '/inventory/items-out', labelKey: 'nav.itemsOut', icon: 'box', roles: ['OWNER'] },
+      { to: '/inventory/damage-loss', labelKey: 'nav.damageLoss', icon: 'warning', roles: ['OWNER'] },
     ],
   },
   // Sellers only: the Owner reads sales on Reports.

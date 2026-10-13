@@ -34,7 +34,6 @@ export function ProductDialog({
     ? categoryId
     : (categories[0]?.id ?? '')
   const category = categories.find((entry) => entry.id === validCategoryId)?.kind ?? 'QUANTITY'
-  const [name, setName] = useState('')
   const [price, setPrice] = useState('')
   // What the business pays for one, for profit and loss. Owner only.
   const [costPrice, setCostPrice] = useState('')
@@ -144,8 +143,6 @@ export function ProductDialog({
 
   const priceValue = Number(price)
 
-  const nameValid = name.trim() === '' || name.trim().length >= 2
-
   // Optional: a suggestion only, since sellers enter the real price.
   const priceValid =
     price.trim() === '' || (Number.isFinite(priceValue) && priceValue >= 0)
@@ -154,7 +151,6 @@ export function ProductDialog({
     costPrice.trim() === '' || (Number.isFinite(Number(costPrice)) && Number(costPrice) >= 0)
 
   const valid =
-    nameValid &&
     priceValid &&
     costValid &&
     validTypeId !== '' &&
@@ -175,7 +171,6 @@ export function ProductDialog({
       typeId: effectiveTypeId,
       ...(price.trim() !== '' ? { price: priceValue } : {}),
       ...(costPrice.trim() !== '' ? { costPrice: Number(costPrice) } : {}),
-      ...(name.trim() ? { name: name.trim() } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
       // The variant is part of the generated name for every product, and kept
       // as details for serialized goods.
@@ -323,17 +318,6 @@ export function ProductDialog({
               </div>
             </label>
           ) : null}
-
-          <label className={styles.field}>
-            <span>
-              {t('prod.name')}<em>{t('prod.nameNote')}</em>
-            </span>
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              maxLength={150}
-            />
-          </label>
 
           <label className={styles.field}>
             <span>
