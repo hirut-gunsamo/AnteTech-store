@@ -1,12 +1,14 @@
 import { useState } from 'react'
 
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { CategoryDialog } from '../components/categories/CategoryDialog'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { useCategories } from '../lib/categories'
 import { count } from '../lib/format'
 import { useT, type TranslationKey } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { useToasts } from '../lib/toasts'
 import type { CategoryRow } from '../lib/types'
 import base from './Products.module.css'
@@ -27,6 +29,7 @@ export default function Categories() {
   const { toasts, push, dismiss } = useToasts()
   const { categories, loaded, reload } = useCategories()
   const [form, setForm] = useState<CategoryRow | 'new' | null>(null)
+  const [search, setSearch] = useState('')
 
   async function remove(category: CategoryRow) {
     if (!window.confirm(t('cat.deleteConfirm', { name: category.name }))) return
@@ -39,6 +42,8 @@ export default function Categories() {
       push('error', caught instanceof Error ? caught.message : 'Failed.')
     }
   }
+
+  const shown = categories.filter((category) => matches(search, category.name))
 
   return (
     <div className={base.page}>
@@ -55,10 +60,13 @@ export default function Categories() {
       </header>
 
       <Card>
+        <SearchBox alone value={search} onChange={setSearch} placeholder={t('cat.searchPlaceholder')} />
         {!loaded ? (
           <Empty>{t('common.loading')}</Empty>
         ) : categories.length === 0 ? (
           <Empty>{t('cat.none')}</Empty>
+        ) : shown.length === 0 ? (
+          <Empty>{t('common.noMatch')}</Empty>
         ) : (
           <div className={base.scroll}>
             <table className={base.table}>
@@ -74,7 +82,7 @@ export default function Categories() {
                 </tr>
               </thead>
               <tbody>
-                {categories.map((category) => (
+                {shown.map((category) => (
                   <tr key={category.id}>
                     <td data-label={t('cat.name')} className={base.strong}>
                       {category.name}

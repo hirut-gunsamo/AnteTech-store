@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { CommissionDialog } from '../components/payroll/CommissionDialog'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { CATEGORY_KEY, currency, shortDate } from '../lib/format'
 import { useT } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { thisMonth } from '../lib/month'
 import { useToasts } from '../lib/toasts'
 import type { CommissionPaymentRow } from '../lib/types'
@@ -26,6 +28,7 @@ export default function Commission() {
   const [rows, setRows] = useState<CommissionPaymentRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [search, setSearch] = useState('')
   const [form, setForm] = useState<CommissionPaymentRow | 'new' | null>(null)
 
   useEffect(() => {
@@ -98,6 +101,10 @@ export default function Commission() {
     URL.revokeObjectURL(link.href)
   }
 
+  const shown = (rows ?? []).filter((row) =>
+    matches(search, row.user.name, row.user.branch?.name, row.note, ...row.lines.map((line) => line.label)),
+  )
+
   return (
     <div className={base.page}>
       <header className={base.head}>
@@ -130,6 +137,7 @@ export default function Commission() {
 
       <Card>
         <div className={styles.filters}>
+          <SearchBox value={search} onChange={setSearch} placeholder={t('com.searchPlaceholder')} />
           <label>
             {t('pay.month')}
             <input type="month" value={month} max={thisMonth()} onChange={(event) => event.target.value && setMonth(event.target.value)} />
@@ -142,6 +150,8 @@ export default function Commission() {
           <Empty>{t('common.loading')}</Empty>
         ) : rows.length === 0 ? (
           <Empty>{t('com.none')}</Empty>
+        ) : shown.length === 0 ? (
+          <Empty>{t('common.noMatch')}</Empty>
         ) : (
           <div className={base.scroll}>
             <table className={base.table}>
@@ -161,7 +171,7 @@ export default function Commission() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {shown.map((row) => (
                   <tr key={row.id}>
                     <td data-label={t('pay.employee')} className={base.strong}>
                       {row.user.name}

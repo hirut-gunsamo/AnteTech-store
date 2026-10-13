@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/context'
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { NewTransferDialog } from '../components/transfers/NewTransferDialog'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { count, shortDate } from '../lib/format'
 import { useT, type TranslationKey } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { useToasts } from '../lib/toasts'
 import type { TransferRow } from '../lib/types'
 import base from './Products.module.css'
@@ -35,6 +37,7 @@ export default function Transfers() {
   const [reloadKey, setReloadKey] = useState(0)
   const [creating, setCreating] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -65,7 +68,18 @@ export default function Transfers() {
     }
   }
 
-  const shown = (rows ?? []).filter((row) => status === 'ALL' || row.status === status)
+  const shown = (rows ?? []).filter(
+    (row) =>
+      (status === 'ALL' || row.status === status) &&
+      matches(
+        search,
+        row.fromLocation.name,
+        row.toLocation.name,
+        row.driverName,
+        row.vehiclePlate,
+        ...row.items.map((item) => `${item.product.name} ${item.product.sku}`),
+      ),
+  )
   const onTheWay = (rows ?? []).filter((row) => row.status === 'IN_TRANSIT').length
 
   return (
@@ -86,6 +100,7 @@ export default function Transfers() {
 
       <Card>
         <div className={styles.filters}>
+          <SearchBox value={search} onChange={setSearch} placeholder={t('tr.searchPlaceholder')} />
           <select value={status} onChange={(event) => setStatus(event.target.value as typeof status)} aria-label={t('common.status')}>
             <option value="ALL">{t('prod.allStatusAll')}</option>
             <option value="IN_TRANSIT">{t('tr.statusOnTheWay')}</option>

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { PayDialog, SalaryDialog } from '../components/payroll/PayrollDialogs'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { currency, shortDate } from '../lib/format'
 import { useT } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { thisMonth } from '../lib/month'
 import { useToasts } from '../lib/toasts'
 import type { PayrollMonth } from '../lib/types'
@@ -28,6 +30,7 @@ export default function Payroll() {
   const [data, setData] = useState<PayrollMonth | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [search, setSearch] = useState('')
   // null: closed; 'new': Pay Salary; a row: editing that payment.
   const [form, setForm] = useState<Row | 'new' | null>(null)
   // The seller whose monthly salary is being set.
@@ -51,7 +54,9 @@ export default function Payroll() {
 
   const reload = () => setReloadKey((n) => n + 1)
 
-  const paid = (data?.rows ?? []).filter((row) => row.payment)
+  const found = (row: Row) => matches(search, row.employee.name, row.employee.branch?.name, row.payment?.note)
+  const paid = (data?.rows ?? []).filter((row) => row.payment && found(row))
+  const team = (data?.rows ?? []).filter((row) => row.employee.isActive && found(row))
 
   async function undo(row: Row) {
     if (!row.payment || !window.confirm(t('pay.deleteConfirm', { name: row.employee.name }))) return
@@ -131,6 +136,7 @@ export default function Payroll() {
 
       <Card>
         <div className={styles.filters}>
+          <SearchBox value={search} onChange={setSearch} placeholder={t('pay.searchPlaceholder')} />
           <label>
             {t('pay.month')}
             <input type="month" value={month} max={thisMonth()} onChange={(event) => event.target.value && setMonth(event.target.value)} />
@@ -142,7 +148,7 @@ export default function Payroll() {
         {!data ? (
           <Empty>{t('common.loading')}</Empty>
         ) : paid.length === 0 ? (
-          <Empty>{t('pay.nonePaid')}</Empty>
+          <Empty>{search ? t('common.noMatch') : t('pay.nonePaid')}</Empty>
         ) : (
           <div className={base.scroll}>
             <table className={base.table}>
@@ -204,8 +210,8 @@ export default function Payroll() {
       <Card title={t('pay.monthlySalaries')} subtitle={t('pay.monthlySalariesNote')}>
         {!data ? (
           <Empty>{t('common.loading')}</Empty>
-        ) : data.rows.filter((row) => row.employee.isActive).length === 0 ? (
-          <Empty>{t('pay.noSellers')}</Empty>
+        ) : team.length === 0 ? (
+          <Empty>{search ? t('common.noMatch') : t('pay.noSellers')}</Empty>
         ) : (
           <div className={base.scroll}>
             <table className={base.table}>
@@ -219,8 +225,7 @@ export default function Payroll() {
                 </tr>
               </thead>
               <tbody>
-                {data.rows
-                  .filter((row) => row.employee.isActive)
+                {team
                   .map((row) => (
                     <tr key={row.employee.id}>
                       <td data-label={t('pay.employee')} className={base.strong}>

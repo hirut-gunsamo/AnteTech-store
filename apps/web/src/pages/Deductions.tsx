@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { useAuth } from '../auth/context'
 import { Card, Empty } from '../components/Card'
+import { SearchBox } from '../components/SearchBox'
 import { DeductionDialog } from '../components/deductions/DeductionDialog'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
@@ -9,6 +10,7 @@ import { useBranchList } from '../lib/branches'
 import { thisMonth } from '../lib/month'
 import { count, currency, shortDate } from '../lib/format'
 import { useT } from '../lib/i18n'
+import { matches } from '../lib/search'
 import { useToasts } from '../lib/toasts'
 import type { Deduction } from '../lib/types'
 import base from './Products.module.css'
@@ -34,6 +36,7 @@ export default function Deductions() {
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [adding, setAdding] = useState(false)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -72,6 +75,16 @@ export default function Deductions() {
     0,
   )
 
+  const shown = (rows ?? []).filter((row) =>
+    matches(
+      search,
+      row.user.name,
+      row.user.branch?.name,
+      row.note,
+      ...row.lines.map((line) => line.label),
+    ),
+  )
+
   return (
     <div className={base.page}>
       <header className={base.head}>
@@ -103,6 +116,7 @@ export default function Deductions() {
 
       <Card>
         <div className={styles.filters} style={{ marginBottom: 0 }}>
+          <SearchBox value={search} onChange={setSearch} placeholder={t('ded.searchPlaceholder')} />
           <label>
             {t('pay.month')}
             <input type="month" value={month} onChange={(event) => setMonth(event.target.value || thisMonth())} />
@@ -126,6 +140,8 @@ export default function Deductions() {
           <Empty>{t('common.loading')}</Empty>
         ) : rows.length === 0 ? (
           <Empty>{t('ded.none')}</Empty>
+        ) : shown.length === 0 ? (
+          <Empty>{t('common.noMatch')}</Empty>
         ) : (
           <div className={base.scroll}>
             <table className={base.table}>
@@ -140,7 +156,7 @@ export default function Deductions() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {shown.map((row) => (
                   <tr key={row.id}>
                     <td data-label={t('req.date')}>{shortDate(row.day)}</td>
                     {isOwner ? (
