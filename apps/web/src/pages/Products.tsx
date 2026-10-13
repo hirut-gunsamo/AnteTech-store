@@ -178,6 +178,7 @@ export default function Products() {
                   <th scope="col">{t('prod.type')}</th>
                   <th scope="col">{t('prod.details')}</th>
                   <th scope="col">{t('prod.price')}</th>
+                  <th scope="col">{t('prod.costPrice')}</th>
                   <th scope="col">{t('prod.inStock')}</th>
                   {isOwner ? (
                     <th scope="col" className={styles.actionsCol}>
@@ -210,6 +211,9 @@ export default function Products() {
                       <td data-label={t('prod.details')}>{detailOf(product)}</td>
                       <td data-label={t('prod.price')} className="tabular">
                         {currency(Number(product.price))}
+                      </td>
+                      <td data-label={t('prod.costPrice')} className="tabular">
+                        {product.costPrice == null ? '—' : currency(Number(product.costPrice))}
                       </td>
                       <td data-label={t('prod.inStock')} className="tabular">
                         {count(held)}

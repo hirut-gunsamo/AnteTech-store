@@ -36,6 +36,8 @@ export function ProductDialog({
   const category = categories.find((entry) => entry.id === validCategoryId)?.kind ?? 'QUANTITY'
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
+  // What the business pays for one, for profit and loss. Owner only.
+  const [costPrice, setCostPrice] = useState('')
   const [description, setDescription] = useState('')
 
   const [phoneModel, setPhoneModel] = useState('')
@@ -145,7 +147,10 @@ export function ProductDialog({
   const priceValid =
     price.trim() !== '' && Number.isFinite(priceValue) && priceValue >= 0
 
-  const valid = nameValid && priceValid && validTypeId !== ''
+  const costValid =
+    costPrice.trim() === '' || (Number.isFinite(Number(costPrice)) && Number(costPrice) >= 0)
+
+  const valid = nameValid && priceValid && costValid && validTypeId !== ''
 
   // The deepest node chosen is what gets submitted: the model if one was
   // picked, otherwise the brand.
@@ -161,6 +166,7 @@ export function ProductDialog({
     const body = {
       typeId: effectiveTypeId,
       price: priceValue,
+      ...(costPrice.trim() !== '' ? { costPrice: Number(costPrice) } : {}),
       ...(name.trim() ? { name: name.trim() } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
       // The variant is part of the generated name for every product, and kept
@@ -332,6 +338,21 @@ export function ProductDialog({
               onChange={(event) => setPrice(event.target.value)}
               required
             />
+          </label>
+
+          <label className={styles.field}>
+            <span>
+              {t('prod.costPrice')}<em>{t('prod.optional')}</em>
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={costPrice}
+              onChange={(event) => setCostPrice(event.target.value)}
+            />
+            <small className={styles.hint}>{t('prod.costPriceNote')}</small>
           </label>
 
           {validTypeId ? (
