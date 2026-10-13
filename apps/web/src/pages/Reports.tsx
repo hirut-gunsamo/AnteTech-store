@@ -400,14 +400,6 @@ export default function Reports() {
     })
   }, [receipts, branch, from, to])
 
-  const bankedTotal = useMemo(
-    () =>
-      scopedReceipts
-        .filter((receipt) => receipt.status === 'VERIFIED')
-        .reduce((total, receipt) => total + Number(receipt.amount), 0),
-    [scopedReceipts],
-  )
-
   function reset() {
     setPeriod('daily')
     setBranch('ALL')
@@ -565,65 +557,6 @@ export default function Reports() {
         <Card title={t("rep.title")}>
           <Empty>{error}</Empty>
         </Card>
-      </div>
-    )
-  }
-
-  /** The four summary tiles, for one store or for the store picked. */
-  function tilesOf(report: SalesReport | null, requestCount: number, banked: number) {
-    const items = Object.values(report?.summary.byCategory ?? {}).reduce(
-      (total, entry) => total + entry.quantity,
-      0,
-    )
-
-    return [
-      {
-        key: 'sales',
-        tone: 'green',
-        icon: 'chart' as const,
-        label: t('rep.totalSales'),
-        value: currency(report?.summary.revenue ?? 0),
-      },
-      {
-        key: 'items',
-        tone: 'blue',
-        icon: 'cart' as const,
-        label: t('rep.itemsSold'),
-        value: count(items),
-      },
-      {
-        key: 'requests',
-        tone: 'amber',
-        icon: 'box' as const,
-        label: t('rep.stockRequests'),
-        value: count(requestCount),
-      },
-      {
-        key: 'banked',
-        tone: 'red',
-        icon: 'receipt' as const,
-        label: t('rep.bankDeposits'),
-        value: currency(banked),
-      },
-    ]
-  }
-
-  function tileRow(tiles: ReturnType<typeof tilesOf>) {
-    return (
-      <div className={styles.tiles}>
-        {tiles.map((tile) => (
-          <div key={tile.key} className={styles.tile} data-tone={tile.tone}>
-            <span className={styles.tileIcon}>
-              <Icon name={tile.icon} size={19} />
-            </span>
-            <div className={styles.tileBody}>
-              <span className={styles.tileLabel}>{tile.label}</span>
-              <strong className={`${styles.tileValue} tabular`}>
-                {tile.value}
-              </strong>
-            </div>
-          </div>
-        ))}
       </div>
     )
   }
@@ -1103,21 +1036,6 @@ export default function Reports() {
           {t('common.reset')}
         </button>
       </div>
-
-      {byStore
-        ? storeReports.map((store) =>
-            storeSection(
-              store,
-              tileRow(
-                tilesOf(
-                  store.sales,
-                  storeRequests(store.id).length,
-                  verifiedTotal(storeReceipts(store.id)),
-                ),
-              ),
-            ),
-          )
-        : tileRow(tilesOf(sales, scopedRequests.length, bankedTotal))}
 
       <div className={styles.tabs} role="tablist">
         <div className={styles.tabList}>
