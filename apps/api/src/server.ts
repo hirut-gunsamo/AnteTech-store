@@ -127,7 +127,7 @@ await app.register(receiptRoutes, {
   prefix: "/api/receipts",
 });
 
-// Office equipment held by each branch: computers, furniture, stationery
+// Store equipment held by each store: computers, furniture, stationery
 // Dashboards and downloadable reports
 await app.register(reportRoutes, {
   prefix: "/api/reports",

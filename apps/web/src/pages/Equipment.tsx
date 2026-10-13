@@ -30,7 +30,7 @@ const STATUS_KEY: Record<AssetStatus, TranslationKey> = {
 }
 
 /**
- * The office equipment register: what each store works with, as opposed to
+ * The store equipment register: what each store works with, as opposed to
  * what it sells.
  *
  * The Owner buys and ships equipment, so the Owner records it. A seller sees

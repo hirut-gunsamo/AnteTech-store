@@ -770,7 +770,7 @@ export type ExpenseReport = {
 }
 
 /* ---------------------------------------------------------------------------
-   Office equipment
+   Store equipment
    --------------------------------------------------------------------------- */
 
 export type AssetCategory =
@@ -781,7 +781,7 @@ export type AssetCategory =
 
 export type AssetStatus = 'IN_USE' | 'DAMAGED' | 'RETIRED'
 
-/** One delivery of office equipment to a branch. Never sold, never issued. */
+/** One delivery of store equipment to a store. Never sold, never issued. */
 export type OfficeAsset = {
   id: string
   name: string
@@ -889,4 +889,54 @@ export type CommissionPaymentRow = {
     unitPrice: string
     percent: string | null
   }[]
+}
+
+/** One period's or one store's figures in the profit report. */
+export type ProfitFigures = {
+  sales: number
+  goods: number
+  expenses: number
+  payroll: number
+  commission: number
+  equipment: number
+  income: number
+  costs: number
+  profit: number
+}
+
+/** Profit and loss for the Owner, from /api/reports/profit. */
+export type ProfitReport = {
+  from: string
+  to: string
+  income: {
+    sales: number
+    salesByCategory: { kind: string; name: string | null; amount: number; cost: number }[]
+    /** Every store, even one that sold nothing, with its sales by category. */
+    salesByBranch: {
+      id: string
+      name: string
+      amount: number
+      byCategory: { kind: string; name: string | null; amount: number }[]
+    }[]
+    total: number
+  }
+  costs: {
+    goods: number
+    expenses: number
+    payroll: { net: number; salary: number; bonus: number; deduction: number }
+    commission: number
+    equipment: number
+    total: number
+  }
+  grossProfit: number
+  profit: number
+  uncosted: { quantity: number; revenue: number }
+  byBranch: ({ id: string; name: string } & ProfitFigures)[]
+  /** Newest day first. */
+  byDay: ({ date: string } & ProfitFigures)[]
+  /** Each store's item sales, day by day. */
+  dailySales: {
+    branches: { id: string; name: string }[]
+    days: { date: string; byBranch: Record<string, number>; total: number }[]
+  }
 }

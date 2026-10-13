@@ -94,6 +94,7 @@ const NAV: NavItem[] = [
   // Each seller's own shortages; the Owner sees all of them.
   { to: '/deductions', labelKey: 'nav.deductions', noteKey: 'ded.note', icon: 'warning', roles: ['OWNER', 'SALES'] },
   { to: '/reports', labelKey: 'nav.reports', icon: 'chart', roles: ['OWNER', 'SALES'] },
+  { to: '/profit', labelKey: 'nav.profit', noteKey: 'pl.note', icon: 'chart', roles: ['OWNER'] },
   { to: '/branches', labelKey: 'nav.branches', noteKey: 'branches.note', icon: 'branch', roles: ['OWNER'] },
   { to: '/users', labelKey: 'nav.users', icon: 'users', roles: ['OWNER'] },
   { to: '/sync', labelKey: 'nav.sync', icon: 'sync', roles: ['OWNER', 'SALES'] },
