@@ -374,7 +374,7 @@ export type Sale = {
   subtotal: string
   totalAmount: string
   cashReceived: string
-  paymentMethod: 'CASH' | 'TRANSFER'
+  paymentMethod: 'CASH' | 'TRANSFER' | 'CASH_AND_TRANSFER'
   bankName: string | null
   transferReceived: string
   notes: string | null

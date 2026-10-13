@@ -227,7 +227,7 @@ export function StockInDialog({
             <>
               <label className={styles.field}>
                 <span>
-                  {t(kind === 'SERIALIZED' ? 'prod.brand' : 'prod.type')}
+                  {t(kind === 'SERIALIZED' ? 'prod.brand' : 'prod.typeName')}
                 </span>
                 <select
                   value={validTypeId}
@@ -243,7 +243,7 @@ export function StockInDialog({
 
               {subTypes.length > 0 ? (
                 <label className={styles.field}>
-                  <span>{t('prod.type')}</span>
+                  <span>{t('prod.typeName')}</span>
                   <select
                     value={validSubTypeId}
                     onChange={(event) => setSubTypeId(event.target.value)}

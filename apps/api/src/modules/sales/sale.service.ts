@@ -190,16 +190,13 @@ export async function createSale(
         approvedAt: new Date(),
         subtotal,
         totalAmount: subtotal,
-        // Only cash counts as money the seller holds; a transfer is already
-        // in the bank.
-        ...(data.paymentMethod === "TRANSFER"
-          ? {
-              paymentMethod: "TRANSFER" as const,
-              bankName: data.bankName ?? null,
-              cashReceived: new Prisma.Decimal(0),
-              transferReceived: new Prisma.Decimal(data.cashReceived),
-            }
-          : { cashReceived: new Prisma.Decimal(data.cashReceived) }),
+        // Only cash counts as money the seller holds; transfer is already in
+        // the bank, so it is tracked separately.
+        paymentMethod: data.paymentMethod,
+        bankName:
+          data.paymentMethod === "CASH" ? null : (data.bankName ?? null),
+        cashReceived: new Prisma.Decimal(data.cashReceived),
+        transferReceived: new Prisma.Decimal(data.transferReceived ?? 0),
         notes: data.customerNote ?? null,
       },
       select: { id: true },

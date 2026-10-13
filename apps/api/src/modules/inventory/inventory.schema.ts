@@ -30,6 +30,9 @@ export const unitsQuerySchema = z.object({
 export const adjustBalanceSchema = z.object({
   quantity: z.coerce.number().int().min(0),
   reason: z.string().min(1).max(500),
+  reasonType: z
+    .enum(["CORRECTION", "ITEMS_OUT", "DAMAGED", "LOST"])
+    .optional(),
 });
 
 // Editing the product behind a row. Only the fields a mis-keyed entry would

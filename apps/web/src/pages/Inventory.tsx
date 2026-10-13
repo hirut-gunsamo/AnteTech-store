@@ -14,7 +14,7 @@ import { useBranchList } from '../lib/branches'
 import { useT, type TranslationKey } from '../lib/i18n'
 import { usePageSize } from '../lib/prefs'
 import { useToasts } from '../lib/toasts'
-import { currency, count } from '../lib/format'
+import { currency, count, shortDate } from '../lib/format'
 import {
   LOW_STOCK_THRESHOLD,
   stockStatus,
@@ -80,6 +80,20 @@ function Icon({
       ))}
     </svg>
   )
+}
+
+function movementTag(move: StockMovement): 'ITEMS_OUT' | 'DAMAGED' | 'LOST' | null {
+  const text = move.notes ?? ''
+  const match = text.match(/^\[(ITEMS_OUT|DAMAGED|LOST|CORRECTION)\]/)
+  if (!match) return null
+  if (match[1] === 'ITEMS_OUT' || match[1] === 'DAMAGED' || match[1] === 'LOST') {
+    return match[1]
+  }
+  return null
+}
+
+function movementReasonText(move: StockMovement): string {
+  return (move.notes ?? '').replace(/^\[[A-Z_]+\]\s*/, '')
 }
 
 export default function Inventory() {
@@ -393,6 +407,23 @@ export default function Inventory() {
       ).length,
     },
   ]
+
+  const scopedMovements = movements.filter((move) => {
+    if (branch === 'ALL') return true
+    return move.fromLocation?.id === branch || move.toLocation?.id === branch
+  })
+
+  const itemsOutRows = scopedMovements
+    .filter((move) => move.type === 'ADJUSTMENT' && movementTag(move) === 'ITEMS_OUT')
+    .slice(0, 40)
+
+  const damageLossRows = scopedMovements
+    .filter(
+      (move) =>
+        move.type === 'ADJUSTMENT' &&
+        (movementTag(move) === 'DAMAGED' || movementTag(move) === 'LOST'),
+    )
+    .slice(0, 40)
 
   return (
     <div className={styles.page}>
@@ -821,6 +852,89 @@ export default function Inventory() {
           </>
         )}
       </Card>
+
+      {isOwner ? (
+        <div className={styles.auditGrid}>
+          <Card>
+            <div className={styles.auditHead}>
+              <h3>{t('inv.itemsOutTitle')}</h3>
+              <span>{count(itemsOutRows.length)}</span>
+            </div>
+            {itemsOutRows.length === 0 ? (
+              <Empty>{t('inv.itemsOutEmpty')}</Empty>
+            ) : (
+              <div className={styles.scroll}>
+                <table className={styles.auditTable}>
+                  <thead>
+                    <tr>
+                      <th scope="col">{t('inv.product')}</th>
+                      <th scope="col">{t('common.branch')}</th>
+                      <th scope="col">{t('dlg.qty')}</th>
+                      <th scope="col">{t('dlg.reason')}</th>
+                      <th scope="col">{t('req.date')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemsOutRows.map((move) => (
+                      <tr key={move.id}>
+                        <td>{move.product.name}</td>
+                        <td>{move.fromLocation?.name ?? '—'}</td>
+                        <td className="tabular">{count(move.quantity)}</td>
+                        <td>{movementReasonText(move) || '—'}</td>
+                        <td>{shortDate(move.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <div className={styles.auditHead}>
+              <h3>{t('inv.damageLossTitle')}</h3>
+              <span>{count(damageLossRows.length)}</span>
+            </div>
+            {damageLossRows.length === 0 ? (
+              <Empty>{t('inv.damageLossEmpty')}</Empty>
+            ) : (
+              <div className={styles.scroll}>
+                <table className={styles.auditTable}>
+                  <thead>
+                    <tr>
+                      <th scope="col">{t('inv.product')}</th>
+                      <th scope="col">{t('common.branch')}</th>
+                      <th scope="col">{t('dlg.adjustmentKind')}</th>
+                      <th scope="col">{t('dlg.qty')}</th>
+                      <th scope="col">{t('dlg.reason')}</th>
+                      <th scope="col">{t('req.date')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {damageLossRows.map((move) => {
+                      const tag = movementTag(move)
+                      return (
+                        <tr key={move.id}>
+                          <td>{move.product.name}</td>
+                          <td>{move.fromLocation?.name ?? '—'}</td>
+                          <td>
+                            {tag === 'DAMAGED'
+                              ? t('dlg.adjustmentDamaged')
+                              : t('dlg.adjustmentLost')}
+                          </td>
+                          <td className="tabular">{count(move.quantity)}</td>
+                          <td>{movementReasonText(move) || '—'}</td>
+                          <td>{shortDate(move.createdAt)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      ) : null}
 
       {detailsOf ? (
         <UnitDetails

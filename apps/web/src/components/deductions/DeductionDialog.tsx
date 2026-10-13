@@ -259,7 +259,13 @@ export function DeductionDialog({
                 </label>
 
                 <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
-                  <span>{t('prod.type')}</span>
+                  <span>
+                    {t(
+                      categories.find((entry) => entry.id === line.categoryId)?.kind === 'SERIALIZED'
+                        ? 'prod.brand'
+                        : 'prod.typeName',
+                    )}
+                  </span>
                   <select
                     value={line.typeId}
                     onChange={(event) => setLine(line.key, { typeId: event.target.value, productId: '', amount: '' })}

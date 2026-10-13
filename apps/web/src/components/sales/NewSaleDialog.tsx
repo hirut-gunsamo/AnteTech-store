@@ -47,8 +47,9 @@ export function NewSaleDialog({
   const [lines, setLines] = useState<Line[]>([
     { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '' },
   ])
-  const [cash, setCash] = useState('')
-  const [method, setMethod] = useState<'CASH' | 'TRANSFER'>('CASH')
+  const [cashReceived, setCashReceived] = useState('')
+  const [transferReceived, setTransferReceived] = useState('')
+  const [method, setMethod] = useState<'CASH' | 'TRANSFER' | 'CASH_AND_TRANSFER'>('CASH')
   const [bank, setBank] = useState('')
   // Offline, the built-in list still lets a transfer sale be recorded.
   const [banks, setBanks] = useState<string[]>([...BANKS])
@@ -223,14 +224,28 @@ export function NewSaleDialog({
   const anyOverStock = priced.some((line) => line.overStock)
   const allValid = priced.every((line) => line.valid) && priced.length > 0
   const allSerialsMatch = priced.every((line) => line.serialsMatch)
-  const cashValue = Number(cash)
-  const cashValid = cash.trim() !== '' && cashValue >= 0
+  const cashValue = Number(cashReceived)
+  const transferValue = Number(transferReceived)
+  const cashValid = cashReceived.trim() !== '' && Number.isFinite(cashValue) && cashValue >= 0
+  const transferValid =
+    transferReceived.trim() !== '' && Number.isFinite(transferValue) && transferValue >= 0
+  const receivedTotal =
+    (Number.isFinite(cashValue) ? cashValue : 0) +
+    (Number.isFinite(transferValue) ? transferValue : 0)
+
+  const paymentValid =
+    (method === 'CASH' && cashValue > 0) ||
+    (method === 'TRANSFER' && transferValue > 0) ||
+    (method === 'CASH_AND_TRANSFER' && cashValue > 0 && transferValue > 0)
 
   const canSubmit =
     !busy &&
     allValid &&
     !anyOverStock &&
-    cashValid &&
+    (method === 'CASH' ? cashValid : true) &&
+    (method === 'TRANSFER' ? transferValid : true) &&
+    (method === 'CASH_AND_TRANSFER' ? cashValid && transferValid : true) &&
+    paymentValid &&
     (method === 'CASH' || bank !== '') &&
     allSerialsMatch &&
     duplicateSerials.size === 0
@@ -264,9 +279,10 @@ export function NewSaleDialog({
             unitPrice: line.unitPrice,
             ...(line.needsSerials ? { serials: line.serialList } : {}),
           })),
-          cashReceived: cashValue,
+          cashReceived: method === 'TRANSFER' ? 0 : cashValue,
+          transferReceived: method === 'CASH' ? 0 : transferValue,
           paymentMethod: method,
-          ...(method === 'TRANSFER' ? { bankName: bank } : {}),
+          ...(method !== 'CASH' ? { bankName: bank } : {}),
           ...(note.trim() ? { customerNote: note.trim() } : {}),
         },
       })
@@ -334,14 +350,14 @@ export function NewSaleDialog({
                   {t(
                     categories.find((entry) => entry.id === line.categoryId)?.kind === 'SERIALIZED'
                       ? 'prod.brand'
-                      : 'prod.type',
+                      : 'prod.typeName',
                   )}
                 </span>
                 <select
                   value={line.typeId}
                   onChange={(event) => setLine(index, { typeId: event.target.value, productId: '' })}
                 >
-                  <option value="">{t('dlg.allTypes')}</option>
+                    <option value="">{t('dlg.allTypes')}</option>
                   {[
                     ...new Map(
                       available
@@ -503,13 +519,13 @@ export function NewSaleDialog({
             <strong className="tabular">{currency(total)}</strong>
           </div>
 
-          {/* How the customer paid. A transfer names the bank it went to. */}
+          {/* How the customer paid. Transfer and split payment name the bank. */}
           <div className={styles.field}>
             <span>
               {t('pay.method')}<em>{t('common.required')}</em>
             </span>
-            <div className={styles.lineGrid} style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-              {(['CASH', 'TRANSFER'] as const).map((option) => (
+            <div className={styles.lineGrid} style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+              {(['CASH', 'TRANSFER', 'CASH_AND_TRANSFER'] as const).map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -517,13 +533,19 @@ export function NewSaleDialog({
                   aria-pressed={method === option}
                   onClick={() => setMethod(option)}
                 >
-                  {t(option === 'CASH' ? 'pay.cash' : 'pay.transfer')}
+                  {t(
+                    option === 'CASH'
+                      ? 'pay.cash'
+                      : option === 'TRANSFER'
+                        ? 'pay.transfer'
+                        : 'pay.cashTransfer',
+                  )}
                 </button>
               ))}
             </div>
           </div>
 
-          {method === 'TRANSFER' ? (
+          {method !== 'CASH' ? (
             <label className={styles.field}>
               <span>
                 {t('pay.bank')}<em>{t('common.required')}</em>
@@ -539,7 +561,7 @@ export function NewSaleDialog({
             </label>
           ) : null}
 
-          {method === 'TRANSFER' ? (
+          {method !== 'CASH' ? (
             newBank === null ? (
               <button type="button" className={styles.addLine} onClick={() => setNewBank('')}>
                 {t('pay.addBank')}
@@ -575,24 +597,43 @@ export function NewSaleDialog({
             )
           ) : null}
 
-          <label className={styles.field}>
-            <span>
-              {t(method === 'CASH' ? 'dlg.cashReceived' : 'pay.transferReceived')}<em>{t('common.required')}</em>
-            </span>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={cash}
-              onChange={(event) => setCash(event.target.value)}
-              placeholder={String(total || '')}
-              required
-            />
-          </label>
+          {method !== 'TRANSFER' ? (
+            <label className={styles.field}>
+              <span>
+                {t('dlg.cashReceived')}<em>{t('common.required')}</em>
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={cashReceived}
+                onChange={(event) => setCashReceived(event.target.value)}
+                placeholder={String(total || '')}
+                required
+              />
+            </label>
+          ) : null}
 
-          {cashValid && cashValue < total ? (
+          {method !== 'CASH' ? (
+            <label className={styles.field}>
+              <span>
+                {t('pay.transferReceived')}<em>{t('common.required')}</em>
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={transferReceived}
+                onChange={(event) => setTransferReceived(event.target.value)}
+                placeholder={String(total || '')}
+                required
+              />
+            </label>
+          ) : null}
+
+          {(cashValid || transferValid) && receivedTotal < total ? (
             <p className={styles.tally} data-bad="">
-              {t('dlg.shortBy', { amount: currency(total - cashValue) })}
+              {t('dlg.shortBy', { amount: currency(total - receivedTotal) })}
             </p>
           ) : null}
 
