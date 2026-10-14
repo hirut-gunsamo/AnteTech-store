@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 
 import { api } from '../../lib/api'
 import { sendOrQueue } from '../../lib/sync'
@@ -7,7 +7,8 @@ import { count } from '../../lib/format'
 import type { CatalogueProduct, InventorySummary } from '../../lib/types'
 import styles from '../inventory/Panel.module.css'
 
-type Line = { productId: string; quantity: string }
+// The type (Charger), then the models of that type.
+type Line = { typeId: string; productId: string; quantity: string }
 
 /**
  * A seller asking the Owner to restock their store.
@@ -26,7 +27,7 @@ export function NewRequestDialog({
   const [products, setProducts] = useState<CatalogueProduct[]>([])
   const t = useT()
   const [onHand, setOnHand] = useState<Map<string, number>>(new Map())
-  const [lines, setLines] = useState<Line[]>([{ productId: '', quantity: '' }])
+  const [lines, setLines] = useState<Line[]>([{ typeId: '', productId: '', quantity: '' }])
   const [note, setNote] = useState('')
 
   const [busy, setBusy] = useState(false)
@@ -78,6 +79,28 @@ export function NewRequestDialog({
 
     return () => controller.abort()
   }, [])
+
+  // Each product with its type, and the ids a type
+  // pick matches on (an older phone filed under a model still shows under
+  // its brand).
+  const entries = useMemo(
+    () =>
+      products
+        .map((entry) => ({
+          id: entry.id,
+          name: entry.name,
+          typeId: entry.type?.parent?.id ?? entry.type?.id ?? '',
+          typeName: entry.type?.parent?.name ?? entry.type?.name ?? '',
+          typeIds: [entry.type?.id, entry.type?.parent?.id].filter((id): id is string => Boolean(id)),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })),
+    [products],
+  )
+
+  // Every type, A to Z: Charger, Cover, Glass, Infinix, Speaker ...
+  const typeOptions = [
+    ...new Map(entries.filter((entry) => entry.typeId).map((entry) => [entry.typeId, entry.typeName] as const)),
+  ].sort((a, b) => a[1].localeCompare(b[1]))
 
   const priced = lines.map((line) => {
     const product = products.find((entry) => entry.id === line.productId)
@@ -181,24 +204,42 @@ export function NewRequestDialog({
         <form className={styles.body} onSubmit={handleSubmit}>
           {priced.map((line, index) => (
             <div key={index} className={styles.saleLine}>
-              <label className={styles.field}>
-                <span>{t('dlg.item', { n: index + 1 })}</span>
+              <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
+                <span>
+                  {t('dlg.item', { n: index + 1 })} · {t('prod.typeName')}
+                </span>
                 <select
-                  value={line.productId}
-                  onChange={(event) =>
-                    setLine(index, { productId: event.target.value })
-                  }
+                  value={line.typeId}
+                  onChange={(event) => setLine(index, { typeId: event.target.value, productId: '' })}
                   required
                 >
-                  <option value="">{t('dlg.selectProduct')}</option>
-                  {products.map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name} ·{' '}
-                      {t('dlg.onHand', {
-                        n: count(onHand.get(entry.id) ?? 0),
-                      })}
+                  <option value="">{t('req.chooseType')}</option>
+                  {typeOptions.map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
                     </option>
                   ))}
+                </select>
+              </label>
+
+              <label className={styles.field}>
+                <span>{t('prod.model')}</span>
+                <select
+                  value={line.productId}
+                  onChange={(event) => setLine(index, { productId: event.target.value })}
+                  disabled={!line.typeId}
+                  required
+                >
+                  <option value="">{line.typeId ? t('sale.chooseModel') : t('req.typeFirst')}</option>
+                  {line.typeId
+                    ? entries
+                        .filter((entry) => entry.typeIds.includes(line.typeId))
+                        .map((entry) => (
+                          <option key={entry.id} value={entry.id}>
+                            {entry.name} · {t('dlg.onHand', { n: count(onHand.get(entry.id) ?? 0) })}
+                          </option>
+                        ))
+                    : null}
                 </select>
               </label>
 
@@ -237,7 +278,7 @@ export function NewRequestDialog({
             onClick={() =>
               setLines((current) => [
                 ...current,
-                { productId: '', quantity: '' },
+                { typeId: '', productId: '', quantity: '' },
               ])
             }
           >
