@@ -1432,7 +1432,7 @@ export const en = {
   'sales.restockOff': 'The goods really left the shop: only the record is deleted, stock stays as it is.',
   'sales.deleteWarn': 'The sale is removed from sales, reports and cash. This cannot be undone.',
   'sales.deletedNoStock': '{n} sale(s) deleted; stock was not changed.',
-  'req.chooseType': 'Choose the type (e.g. Charger)',
+  'req.chooseType': 'Choose the type',
   'req.typeFirst': 'Choose the type first',
 } as const
 
@@ -2832,7 +2832,7 @@ export const am: Record<TranslationKey, string> = {
   'sales.restockOff': 'ዕቃዎቹ በእርግጥ ወጥተዋል፦ መዝገቡ ብቻ ይሰረዛል፣ ክምችቱ አይቀየርም።',
   'sales.deleteWarn': 'ሽያጩ ከሽያጮች፣ ሪፖርቶችና ገንዘብ ይወገዳል። ይህ መመለስ አይቻልም።',
   'sales.deletedNoStock': '{n} ሽያጭ ተሰርዟል፤ ክምችቱ አልተቀየረም።',
-  'req.chooseType': 'ዓይነቱን ይምረጡ (ለምሳሌ ቻርጀር)',
+  'req.chooseType': 'ዓይነቱን ይምረጡ',
   'req.typeFirst': 'መጀመሪያ ዓይነቱን ይምረጡ',
 }
 
