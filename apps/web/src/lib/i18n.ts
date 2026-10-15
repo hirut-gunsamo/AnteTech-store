@@ -1434,6 +1434,7 @@ export const en = {
   'sales.deletedNoStock': '{n} sale(s) deleted; stock was not changed.',
   'req.chooseType': 'Choose the type',
   'req.typeFirst': 'Choose the type first',
+  'req.moreItems': '+{n} more items',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2834,6 +2835,7 @@ export const am: Record<TranslationKey, string> = {
   'sales.deletedNoStock': '{n} ሽያጭ ተሰርዟል፤ ክምችቱ አልተቀየረም።',
   'req.chooseType': 'ዓይነቱን ይምረጡ',
   'req.typeFirst': 'መጀመሪያ ዓይነቱን ይምረጡ',
+  'req.moreItems': '+{n} ተጨማሪ ዕቃዎች',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }

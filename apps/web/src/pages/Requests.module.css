@@ -1032,3 +1032,63 @@
 .itemQty {
   font-weight: 600;
 }
+
+/* "+N more" under a long request's first items: opens the full list. */
+.moreItems {
+  margin-top: 6px;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand) 7%, var(--surface));
+  color: var(--brand-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.moreItems:hover {
+  background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+}
+
+/* One line per item, so each name sits level with its number. */
+.itemNames li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 230px;
+  line-height: 20px;
+}
+
+.moreSpacer {
+  display: block;
+  height: 30px;
+}
+
+@media (min-width: 1500px) {
+  .table td[data-col='items'] {
+    min-width: 210px;
+  }
+}
+
+.qtyInline {
+  display: none;
+}
+
+/* On a phone each request is a card: names can use the full width. */
+@media (max-width: 720px) {
+  .itemNames li {
+    max-width: none;
+    white-space: normal;
+  }
+
+  .qtyInline {
+    display: inline;
+    font-weight: 700;
+  }
+
+  .table td[data-col='qty'] {
+    display: none !important;
+  }
+}

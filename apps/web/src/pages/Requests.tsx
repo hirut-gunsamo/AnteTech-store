@@ -83,6 +83,9 @@ function isoDay(date: Date) {
  * Restock requests. A seller raises them and sees their own; the Owner sees
  * every store's and decides them.
  */
+// How many items a row lists before "+N more" takes over.
+const ITEMS_SHOWN = 3
+
 export default function Requests() {
   const { user } = useAuth()
 
@@ -763,14 +766,34 @@ export default function Requests() {
                             next. Approving is done from the ⋯ menu or Approvals. */}
                         <td data-label={t('req.items')} data-col="items">
                           <ul className={styles.itemNames}>
-                            {request.items.map((item) => (
-                              <li key={item.id}>{item.product.name}</li>
+                            {request.items.slice(0, ITEMS_SHOWN).map((item) => (
+                              <li key={item.id} title={item.product.name}>
+                                {item.product.name}
+                                {/* On a phone the number rides with its name. */}
+                                <span className={styles.qtyInline}>
+                                  {' × '}
+                                  {count(item.approvedQuantity !== null && item.approvedQuantity !== item.quantity
+                                    ? item.approvedQuantity
+                                    : item.quantity)}
+                                </span>
+                              </li>
                             ))}
                           </ul>
+                          {/* A long request stays one tidy row: the rest
+                              opens with the details on the right. */}
+                          {request.items.length > ITEMS_SHOWN ? (
+                            <button
+                              type="button"
+                              className={styles.moreItems}
+                              onClick={() => setDetailsOf(request)}
+                            >
+                              {t('req.moreItems', { n: request.items.length - ITEMS_SHOWN })}
+                            </button>
+                          ) : null}
                         </td>
-                        <td data-label={t('req.quantity')}>
+                        <td data-label={t('req.quantity')} data-col="qty">
                           <ul className={`${styles.itemNames} ${styles.itemQty} tabular`}>
-                            {request.items.map((item) => (
+                            {request.items.slice(0, ITEMS_SHOWN).map((item) => (
                               <li key={item.id}>
                                 {count(item.approvedQuantity !== null && item.approvedQuantity !== item.quantity
                                   ? item.approvedQuantity
@@ -778,6 +801,9 @@ export default function Requests() {
                               </li>
                             ))}
                           </ul>
+                          {/* Keeps the numbers level with their names when
+                              "+N more" sits under the names. */}
+                          {request.items.length > ITEMS_SHOWN ? <span className={styles.moreSpacer} aria-hidden="true" /> : null}
                         </td>
 
                         <td data-label={t('common.status')}>
