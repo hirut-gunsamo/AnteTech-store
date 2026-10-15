@@ -1435,6 +1435,8 @@ export const en = {
   'req.chooseType': 'Choose the type',
   'req.typeFirst': 'Choose the type first',
   'req.moreItems': '+{n} more items',
+  'tr.itemsUnits': '{items} items · {units} units',
+  'tr.viewItems': 'View all items',
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -2836,6 +2838,8 @@ export const am: Record<TranslationKey, string> = {
   'req.chooseType': 'ዓይነቱን ይምረጡ',
   'req.typeFirst': 'መጀመሪያ ዓይነቱን ይምረጡ',
   'req.moreItems': '+{n} ተጨማሪ ዕቃዎች',
+  'tr.itemsUnits': '{items} ዕቃዎች · {units} ብዛት',
+  'tr.viewItems': 'ሁሉንም ዕቃዎች እይ',
 }
 
 const DICTS: Record<Lang, Record<TranslationKey, string>> = { en, am }
