@@ -104,7 +104,18 @@ export default function Inventory() {
   // Filters
   const [tab, setTab] = useState<TabValue>('ALL')
   const [search, setSearch] = useState('')
-  const [branch, setBranch] = useState('ALL')
+  // The Owner looks at one store at a time, the Main Store first; '' means
+  // "not picked yet", which falls back to the Main Store below.
+  const [branch, setBranch] = useState('')
+  const [mainId, setMainId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    api<{ branches: { id: string; isMainStock: boolean }[] }>('/api/branches', { signal: controller.signal })
+      .then((payload) => setMainId(payload.branches?.find((row) => row.isMainStock)?.id ?? null))
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
   const [status, setStatus] = useState<StockStatus | 'ALL'>('ALL')
   const [page, setPage] = useState(1)
 
@@ -178,8 +189,11 @@ export default function Inventory() {
   const branches = useMemo(() => {
     const seen = new Map<string, string>(branchList)
     for (const item of items) seen.set(item.location.id, item.location.name)
-    return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]))
-  }, [items, branchList])
+    // The Main Store first, then the selling stores A to Z.
+    return [...seen.entries()].sort(
+      (a, b) => Number(b[0] === mainId) - Number(a[0] === mainId) || a[1].localeCompare(b[1]),
+    )
+  }, [items, branchList, mainId])
 
   // IMEI / serial search resolves to the products carrying that unit.
   const serialMatches = useMemo(() => {
@@ -197,12 +211,23 @@ export default function Inventory() {
     return hits
   }, [search, units])
 
+  const isOwner = user?.role === 'OWNER'
+  // Never all stores together: the Owner's picked store, else the Main Store.
+  // A seller's summary holds only their own store already.
+  const store = !isOwner
+    ? 'ALL'
+    : branches.some(([id]) => id === branch)
+      ? branch
+      : mainId && branches.some(([id]) => id === mainId)
+        ? mainId
+        : (branches[0]?.[0] ?? 'ALL')
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
 
     return items.filter((item) => {
       if (tab !== 'ALL' && item.product.category !== tab) return false
-      if (branch !== 'ALL' && item.location.id !== branch) return false
+      if (store !== 'ALL' && item.location.id !== store) return false
 
       if (status !== 'ALL') {
         if (stockStatus(item.product.category, item.quantity) !== status) {
@@ -223,7 +248,7 @@ export default function Inventory() {
 
       return true
     })
-  }, [items, tab, branch, status, search, serialMatches])
+  }, [items, tab, store, status, search, serialMatches])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
@@ -232,9 +257,8 @@ export default function Inventory() {
     safePage * PAGE_SIZE,
   )
 
-  const isOwner = user?.role === 'OWNER'
   const filtersOn =
-    tab !== 'ALL' || branch !== 'ALL' || status !== 'ALL' || search !== ''
+    tab !== 'ALL' || status !== 'ALL' || search !== ''
 
   // Changing any filter returns you to page one, otherwise a narrower result
   // set would leave you stranded on a page that no longer exists.
@@ -261,7 +285,6 @@ export default function Inventory() {
   function resetFilters() {
     setTab('ALL')
     setSearch('')
-    setBranch('ALL')
     setStatus('ALL')
     setPage(1)
   }
@@ -368,42 +391,47 @@ export default function Inventory() {
     )
   }
 
+  // The tiles count the store on screen only, never stores added together.
+  const shown = store === 'ALL' ? summary.items : summary.items.filter((item) => item.location.id === store)
+  const unitsOf = (kind?: string) =>
+    shown.filter((item) => !kind || item.product.category === kind).reduce((sum, item) => sum + item.quantity, 0)
+
   const stat = [
     {
       key: 'total',
       tone: 'green',
       icon: 'box' as const,
       label: t('inv.onShelf'),
-      value: summary.totalUnits,
+      value: unitsOf(),
     },
     {
       key: 'serialized',
       tone: 'blue',
       icon: 'phone' as const,
       label: t('kind.SERIALIZED'),
-      value: summary.byCategory.SERIALIZED,
+      value: unitsOf('SERIALIZED'),
     },
     {
       key: 'quantity',
       tone: 'amber',
       icon: 'box' as const,
       label: t('kind.QUANTITY'),
-      value: summary.byCategory.QUANTITY,
+      value: unitsOf('QUANTITY'),
     },
     {
       key: 'low',
       tone: 'red',
       icon: 'warning' as const,
       label: t('inv.lowStock'),
-      value: summary.items.filter(
+      value: shown.filter(
         (item) => stockStatus(item.product.category, item.quantity) !== 'IN_STOCK',
       ).length,
     },
   ]
 
   const scopedMovements = movements.filter((move) => {
-    if (branch === 'ALL') return true
-    return move.fromLocation?.id === branch || move.toLocation?.id === branch
+    if (store === 'ALL') return true
+    return move.fromLocation?.id === store || move.toLocation?.id === store
   })
 
   const itemsOutRows = scopedMovements
@@ -437,11 +465,10 @@ export default function Inventory() {
           {isOwner ? (
             <select
               className={styles.select}
-              value={branch}
+              value={store}
               onChange={(event) => applyBranch(event.target.value)}
               aria-label={t("inv.branchLabel")}
             >
-              <option value="ALL">{t("inv.allBranches")}</option>
               {branches.map(([id, name]) => (
                 <option key={id} value={id}>
                   {name}
@@ -561,11 +588,10 @@ export default function Inventory() {
           {isOwner ? (
             <select
               className={styles.select}
-              value={branch}
+              value={store}
               onChange={(event) => applyBranch(event.target.value)}
               aria-label={t("inv.branchFilter")}
             >
-              <option value="ALL">{t("inv.allBranches")}</option>
               {branches.map(([id, name]) => (
                 <option key={id} value={id}>
                   {name}

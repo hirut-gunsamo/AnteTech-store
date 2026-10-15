@@ -244,7 +244,7 @@ export const en = {
   // Shown as the page's standing description for every role, so it says
   // nothing about how many branches the reader can see.
   'inv.note': 'Manage phones, devices and accessories.',
-  'inv.noteAll': 'Phones, devices and accessories across all stores.',
+  'inv.noteAll': 'One store at a time: pick the store to see its own stock.',
   'inv.noteBranch': 'Phones, devices and accessories at your store.',
   'inv.add': 'Add Inventory',
   'kind.SERIALIZED': 'Phones & devices',
@@ -1658,7 +1658,7 @@ export const am: Record<TranslationKey, string> = {
 
   'inv.title': 'ክምችት',
   'inv.note': 'ስልኮችን፣ መሣሪያዎችንና ተጨማሪ ዕቃዎችን ያስተዳድሩ።',
-  'inv.noteAll': 'በሁሉም መደብሮች ያሉ ስልኮች፣ መሣሪያዎችና ተጨማሪ ዕቃዎች።',
+  'inv.noteAll': 'አንድ ሱቅ በአንድ ጊዜ፦ የሱቁን ክምችት ለማየት ሱቁን ይምረጡ።',
   'inv.noteBranch': 'በመደብርዎ ያሉ ስልኮች፣ መሣሪያዎችና ተጨማሪ ዕቃዎች።',
   'inv.add': 'ክምችት ጨምር',
   'kind.SERIALIZED': 'ስልኮችና መሣሪያዎች',
