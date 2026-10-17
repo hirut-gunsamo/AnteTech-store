@@ -1092,3 +1092,27 @@
     display: none !important;
   }
 }
+
+/* The Owner's own Send, once every category of a request is decided. */
+.sendBtn {
+  display: block;
+  margin-top: 6px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--brand);
+  color: var(--brand-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sendBtn:hover {
+  background: var(--brand-dark);
+}
+
+.sendBtn:focus-visible {
+  outline: 2px solid var(--brand-dark);
+  outline-offset: 2px;
+}

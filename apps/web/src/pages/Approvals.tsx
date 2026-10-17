@@ -284,13 +284,12 @@ export default function Approvals() {
   // line has its own Approve and Reject.
   const byItem = (row: ApprovalRow) => row.kind === 'REQUEST'
 
-  // A category decided: the Owner goes straight on to sending a restock
-  // once its last category is decided.
+  // A category decided. Nothing is sent by itself: the row's Send button
+  // appears once every category is decided, and the Owner presses it.
   function onDecided(updated: StockRequest, message: string) {
     push('success', message)
     setReloadKey((n) => n + 1)
     if (detailsOf?.id === updated.id) setDetailsOf(fromRequest(updated))
-    if (readyToSend(updated, user?.id)) setApprovingRequest(updated)
   }
 
   async function reject(row: ApprovalRow, reason: string) {
