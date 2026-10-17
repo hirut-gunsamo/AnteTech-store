@@ -376,7 +376,7 @@ export const en = {
   'req.noneYetSales':
     'Nothing yet. Use "Request items" in the morning and "Hand back" at the end of the day.',
   'req.new': 'New Request',
-  'req.sendAsBranch': 'Send as a branch',
+  'req.sendAsBranch': 'Send as a store',
   'req.sendAsBranchNote': 'Ask on behalf of a store. It waits as Pending until you approve it.',
   'req.sendToStore': 'Send to store',
   'req.chooseStore': 'Choose the store',
@@ -1801,7 +1801,7 @@ export const am: Record<TranslationKey, string> = {
   'req.noneYetSales':
     'ገና ጥያቄ የለም። ጠዋት "ዕቃ ጠይቅ"፣ ማታ ደግሞ "መልስ" ይጠቀሙ።',
   'req.new': 'አዲስ ጥያቄ',
-  'req.sendAsBranch': 'እንደ ቅርንጫፍ ላክ',
+  'req.sendAsBranch': 'እንደ መደብር ላክ',
   'req.sendAsBranchNote': 'በመደብር ስም ይጠይቁ። እስኪያጸድቁት ድረስ በመጠባበቅ ላይ ይቆያል።',
   'req.sendToStore': 'የሚላክበት መደብር',
   'req.chooseStore': 'መደብሩን ይምረጡ',
