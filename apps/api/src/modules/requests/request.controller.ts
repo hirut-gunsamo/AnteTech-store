@@ -9,6 +9,7 @@ import {
   createRequestSchema,
   approveRequestSchema,
   rejectRequestSchema,
+  shipRequestsSchema,
   listRequestsQuerySchema,
 } from "./request.schema.js";
 
@@ -17,6 +18,7 @@ import {
   getRequests,
   getRequestById,
   approveRequest,
+  shipRequests,
   rejectRequest,
   cancelRequest,
   decideRequestItems,
@@ -72,6 +74,11 @@ function handleRequestError(
       return reply.status(409).send({
         message:
           "That store has no active seller to receive the goods. Add one in Users first",
+      });
+
+    case "ONE_STORE_PER_LOT":
+      return reply.status(400).send({
+        message: "One lot goes to one store. Pick requests from the same store",
       });
 
     case "NO_BRANCH":
@@ -287,6 +294,38 @@ export async function approveRequestController(
     return reply.send({
       message: "Request approved. The goods are on their way to the store.",
       request: approved,
+    });
+  } catch (error) {
+    return (
+      handleRequestError(error, reply) ?? Promise.reject(error)
+    );
+  }
+}
+
+// One lot for a store: several of its requests go out together.
+export async function shipRequestsController(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const result = shipRequestsSchema.safeParse(request.body);
+
+  if (!result.success) {
+    return reply.status(400).send({
+      message: "Choose the requests and the store they go out from",
+      errors: result.error.flatten(),
+    });
+  }
+
+  const viewer = await withViewer(request, reply);
+  if (!viewer) return reply;
+
+  try {
+    const { requestIds, ...data } = result.data;
+    const shipped = await shipRequests(requestIds, data, viewer);
+
+    return reply.send({
+      message: "Sent. The goods are on their way to the store.",
+      ...shipped,
     });
   } catch (error) {
     return (

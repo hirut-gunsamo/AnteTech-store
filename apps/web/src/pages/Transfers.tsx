@@ -51,8 +51,11 @@ export default function Transfers() {
 
   const reload = () => setReloadKey((n) => n + 1)
 
+  // A seller at the receiving store presses Received. The Owner only does it
+  // for the Main Store, which has no sellers.
   const canReceive = (row: TransferRow) =>
-    row.status === 'IN_TRANSIT' && (isOwner || row.toLocation.id === user?.branch?.id)
+    row.status === 'IN_TRANSIT' &&
+    (isOwner ? row.toLocation.isMainStock : row.toLocation.id === user?.branch?.id)
 
   async function receive(row: TransferRow) {
     if (!window.confirm(t('tr.receiveConfirm', { from: row.fromLocation.name }))) return

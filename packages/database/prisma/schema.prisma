@@ -364,6 +364,11 @@ model StockRequest {
 
   transfer StockTransfer?
 
+  /// The lot it went out in. Several requests from one store can share one
+  /// shipment, sent together and received together.
+  shipmentId String?
+  shipment   StockTransfer? @relation("Shipment", fields: [shipmentId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -371,6 +376,7 @@ model StockRequest {
   @@index([requestedToId])
   @@index([status])
   @@index([kind])
+  @@index([shipmentId])
 }
 
 model StockRequestItem {
@@ -423,6 +429,9 @@ model StockTransfer {
   receivedAt DateTime?
 
   request StockRequest? @relation(fields: [requestId], references: [id])
+
+  /// Every request sent in this lot.
+  lotRequests StockRequest[] @relation("Shipment")
 
   fromLocation StockLocation @relation("TransferFromLocation", fields: [fromLocationId], references: [id])
 

@@ -17,9 +17,9 @@ type Line = { typeId: string; productId: string; quantity: string }
  * rather than a guess. The Owner answers by sending goods from the main store
  * or another store.
  *
- * With `asBranch` it is the Owner asking on behalf of a store: they pick the
- * store and the request is filed for it as Pending, to be approved and sent
- * like any other.
+ * With `asBranch` it is the Owner's "Send to store": they pick the store and
+ * the items, and the goods go out at once from the Main Store (or the store
+ * they pick). A seller there presses Received.
  */
 export function NewRequestDialog({
   onClose,
@@ -34,6 +34,9 @@ export function NewRequestDialog({
   const t = useT()
   const [stores, setStores] = useState<BranchRow[]>([])
   const [storeId, setStoreId] = useState('')
+  // Where it goes out from: the Main Store unless the Owner picks another.
+  const [fromId, setFromId] = useState('')
+  const [allStores, setAllStores] = useState<BranchRow[]>([])
   const [onHand, setOnHand] = useState<Map<string, number>>(new Map())
   const [lines, setLines] = useState<Line[]>([{ typeId: '', productId: '', quantity: '' }])
   const [note, setNote] = useState('')
@@ -71,6 +74,8 @@ export function NewRequestDialog({
             (entry) => entry.status === 'ACTIVE',
           ),
         )
+
+        setAllStores((storeRes.branches ?? []).filter((row) => row.isActive))
 
         // Only selling stores: the main store is where the goods come from.
         setStores(
@@ -166,8 +171,11 @@ export function NewRequestDialog({
     return false
   })
 
+  const sendFrom = fromId || allStores.find((row) => row.isMainStock)?.id || ''
+
   const canSubmit =
     !busy &&
+    (!asBranch || (sendFrom !== '' && sendFrom !== storeId)) &&
     (!asBranch || storeId !== '') &&
     priced.length > 0 &&
     priced.every((l) => l.valid) &&
@@ -191,13 +199,14 @@ export function NewRequestDialog({
       quantity: line.qty,
     }))
 
-    // The Owner files it online; it waits as Pending like a store's own.
+    // The Owner's send goes out at once; a seller there presses Received.
     if (asBranch) {
       try {
         await api('/api/requests', {
           method: 'POST',
           body: {
             branchId: storeId,
+            sourceBranchId: sendFrom,
             items,
             ...(note.trim() ? { notes: note.trim() } : {}),
           },
@@ -283,6 +292,21 @@ export function NewRequestDialog({
                     {row.name}
                   </option>
                 ))}
+              </select>
+            </label>
+          ) : null}
+
+          {asBranch ? (
+            <label className={styles.field}>
+              <span>{t('dlg.shipFrom')}</span>
+              <select value={sendFrom} onChange={(event) => setFromId(event.target.value)}>
+                {allStores
+                  .filter((row) => row.id !== storeId)
+                  .map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name}
+                    </option>
+                  ))}
               </select>
             </label>
           ) : null}
@@ -402,7 +426,7 @@ export function NewRequestDialog({
               className={styles.submit}
               disabled={!canSubmit}
             >
-              {busy ? t('dlg.sending') : t('dlg.sendRequest')}
+              {busy ? t('dlg.sending') : asBranch ? t('appr.send') : t('dlg.sendRequest')}
             </button>
           </div>
         </form>

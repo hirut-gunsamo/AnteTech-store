@@ -14,8 +14,10 @@ export const createRequestSchema = z.object({
 
   notes: z.string().max(500).optional(),
 
-  // The Owner only: the store this is sent to unasked ("Send as a branch").
+  // The Owner only: the store this is sent to unasked ("Send to store"),
+  // and the store it goes out from (the Main Store, usually).
   branchId: z.string().min(1).optional(),
+  sourceBranchId: z.string().min(1).optional(),
 });
 
 // The Owner approves and names the branch the stock will ship from.
@@ -34,6 +36,11 @@ export const approveRequestSchema = z.object({
       }),
     )
     .optional(),
+});
+
+// One lot for a store: several of its requests sent together.
+export const shipRequestsSchema = approveRequestSchema.extend({
+  requestIds: z.array(z.string().min(1)).min(1).max(50),
 });
 
 export const rejectRequestSchema = z.object({
@@ -58,6 +65,9 @@ export type CreateRequestInput = z.infer<
 >;
 export type ApproveRequestInput = z.infer<
   typeof approveRequestSchema
+>;
+export type ShipRequestsInput = z.infer<
+  typeof shipRequestsSchema
 >;
 export type ListRequestsQuery = z.infer<
   typeof listRequestsQuerySchema

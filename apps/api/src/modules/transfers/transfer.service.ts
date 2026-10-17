@@ -200,7 +200,7 @@ export async function receiveTransfer(
 ) {
   const transfer = await prisma.stockTransfer.findUnique({
     where: { id },
-    include: { items: true },
+    include: { items: true, toLocation: { select: { isMainStock: true } } },
   });
 
   if (!transfer) {
@@ -211,11 +211,14 @@ export async function receiveTransfer(
     throw new Error("TRANSFER_NOT_IN_TRANSIT");
   }
 
-  // Only the receiving branch confirms receipt.
-  if (
-    viewer.role !== "OWNER" &&
-    transfer.toLocationId !== viewer.branchId
-  ) {
+  // A seller at the receiving store confirms receipt. The Owner only does it
+  // for the Main Store, which has no sellers.
+  const mayReceive =
+    viewer.role === "OWNER"
+      ? transfer.toLocation.isMainStock
+      : transfer.toLocationId === viewer.branchId;
+
+  if (!mayReceive) {
     throw new Error("NOT_YOUR_TRANSFER");
   }
 
@@ -249,12 +252,16 @@ export async function receiveTransfer(
       },
     });
 
-    if (transfer.requestId) {
-      await tx.stockRequest.update({
-        where: { id: transfer.requestId },
-        data: { status: "FULFILLED", fulfilledAt: new Date() },
-      });
-    }
+    // Every request in the lot is closed together.
+    await tx.stockRequest.updateMany({
+      where: {
+        OR: [
+          { shipmentId: id },
+          ...(transfer.requestId ? [{ id: transfer.requestId }] : []),
+        ],
+      },
+      data: { status: "FULFILLED", fulfilledAt: new Date() },
+    });
 
     return tx.stockTransfer.findUnique({
       where: { id },
@@ -316,22 +323,27 @@ export async function cancelTransfer(
       }
     }
 
+    // Every request in the lot goes back to waiting, so the Owner can send
+    // it again, from another store if need be. The lot lets go of them, so a
+    // new lot can take them.
+    await tx.stockRequest.updateMany({
+      where: {
+        OR: [
+          { shipmentId: id },
+          ...(transfer.requestId ? [{ id: transfer.requestId }] : []),
+        ],
+      },
+      data: { status: "PENDING", reviewedAt: null, shipmentId: null },
+    });
+
     await tx.stockTransfer.update({
       where: { id },
       data: {
         status: "CANCELLED",
+        requestId: null,
         ...(reason ? { notes: reason } : {}),
       },
     });
-
-    // The originating request goes back to approved-but-unfulfilled so the
-    // Owner can re-issue it from a different branch.
-    if (transfer.requestId) {
-      await tx.stockRequest.update({
-        where: { id: transfer.requestId },
-        data: { status: "PENDING", reviewedAt: null },
-      });
-    }
 
     return tx.stockTransfer.findUnique({
       where: { id },

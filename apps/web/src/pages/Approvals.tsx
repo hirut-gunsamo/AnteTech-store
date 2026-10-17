@@ -695,6 +695,10 @@ export default function Approvals() {
       {approvingRequest ? (
         <ApproveRequestDialog
           request={approvingRequest}
+          waiting={all
+            .filter((row) => row.kind === 'REQUEST')
+            .map((row) => row.source as StockRequest)
+            .filter((entry) => entry.requestedTo?.id === user?.id)}
           onClose={() => setApprovingRequest(null)}
           onDone={(message) => {
             setApprovingRequest(null)

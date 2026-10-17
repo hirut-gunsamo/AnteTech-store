@@ -39,10 +39,11 @@ export function RequestDetails({
   const { user } = useAuth()
   const [receiving, setReceiving] = useState(false)
   const [receiveError, setReceiveError] = useState<string | null>(null)
+  // Only a seller at the receiving store presses Received.
   const canReceive =
     request.transfer?.status === 'IN_TRANSIT' &&
-    (user?.role === 'OWNER' ||
-      (user?.role === 'SALES' && user.branch?.id === request.transfer.toLocation?.id))
+    user?.role === 'SALES' &&
+    user.branch?.id === request.transfer.toLocation?.id
 
   async function receive() {
     if (!request.transfer) return
