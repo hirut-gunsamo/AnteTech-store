@@ -195,18 +195,6 @@ export function RequestDetails({
             )}
           </section>
 
-          {request.transfer?.driverName ? (
-            <section className={styles.section}>
-              <h3>{t('det.driver')}</h3>
-              <p className={styles.none}>
-                {t('det.driverLine', {
-                  name: request.transfer.driverName,
-                  phone: request.transfer.driverPhone ?? '—',
-                  plate: request.transfer.vehiclePlate ?? '—',
-                })}
-              </p>
-            </section>
-          ) : null}
 
           {canReceive ? (
             <section className={styles.section}>

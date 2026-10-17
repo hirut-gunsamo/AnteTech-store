@@ -342,9 +342,6 @@ export async function approveRequest(
         notes: data.notes ?? null,
 
         // Who carries it is optional: the Owner just approves.
-        driverName: data.driverName ?? null,
-        driverPhone: data.driverPhone ?? null,
-        vehiclePlate: data.vehiclePlate ?? null,
 
         items: { create: shipping },
       },

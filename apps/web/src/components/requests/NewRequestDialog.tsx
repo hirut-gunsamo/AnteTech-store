@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import { sendOrQueue } from '../../lib/sync'
 import { useT } from '../../lib/i18n'
 import { count } from '../../lib/format'
-import type { BranchRow, CatalogueProduct, InventorySummary, StockRequest } from '../../lib/types'
+import type { BranchRow, CatalogueProduct, InventorySummary } from '../../lib/types'
 import styles from '../inventory/Panel.module.css'
 
 // The type (Charger), then the models of that type.
@@ -17,20 +17,18 @@ type Line = { typeId: string; productId: string; quantity: string }
  * rather than a guess. The Owner answers by sending goods from the main store
  * or another store.
  *
- * With `asBranch` it is the Owner sending to a store that did not ask: they
- * pick the store, the request is filed for it, and `onSent` hands it back so
- * the Owner goes straight on to sending it.
+ * With `asBranch` it is the Owner asking on behalf of a store: they pick the
+ * store and the request is filed for it as Pending, to be approved and sent
+ * like any other.
  */
 export function NewRequestDialog({
   onClose,
   onDone,
   asBranch = false,
-  onSent,
 }: {
   onClose: () => void
   onDone: (message: string) => void
   asBranch?: boolean
-  onSent?: (request: StockRequest) => void
 }) {
   const [products, setProducts] = useState<CatalogueProduct[]>([])
   const t = useT()
@@ -193,10 +191,10 @@ export function NewRequestDialog({
       quantity: line.qty,
     }))
 
-    // The Owner sends online: the request comes back to be sent at once.
+    // The Owner files it online; it waits as Pending like a store's own.
     if (asBranch) {
       try {
-        const payload = await api<{ request: StockRequest }>('/api/requests', {
+        await api('/api/requests', {
           method: 'POST',
           body: {
             branchId: storeId,
@@ -204,7 +202,8 @@ export function NewRequestDialog({
             ...(note.trim() ? { notes: note.trim() } : {}),
           },
         })
-        onSent?.(payload.request)
+        const store = stores.find((row) => row.id === storeId)?.name ?? ''
+        onDone(t('req.sentAsBranch', { store }))
       } catch (caught) {
         setError(
           caught instanceof Error ? caught.message : 'Could not send.',
@@ -403,7 +402,7 @@ export function NewRequestDialog({
               className={styles.submit}
               disabled={!canSubmit}
             >
-              {busy ? t('dlg.sending') : asBranch ? t('req.nextChooseCar') : t('dlg.sendRequest')}
+              {busy ? t('dlg.sending') : t('dlg.sendRequest')}
             </button>
           </div>
         </form>

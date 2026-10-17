@@ -34,13 +34,5 @@ export const createTransferSchema = z.object({
       }),
     )
     .min(1),
-  driverName: z.string().trim().min(2).max(120),
-  driverPhone: z
-    .string()
-    .trim()
-    .min(7, "A phone number needs at least 7 digits")
-    .max(24)
-    .regex(/^[+()\d][\d\s()+-]*$/, "Use digits, spaces, and + ( ) - only"),
-  vehiclePlate: z.string().trim().min(2).max(40),
   notes: z.string().max(500).optional(),
 });

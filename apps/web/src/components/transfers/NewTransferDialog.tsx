@@ -27,9 +27,6 @@ export function NewTransferDialog({
   const [toId, setToId] = useState('')
   const [stock, setStock] = useState<InventoryBalance[]>([])
   const [lines, setLines] = useState<Line[]>([{ key: 0, productId: '', quantity: '' }])
-  const [driverName, setDriverName] = useState('')
-  const [driverPhone, setDriverPhone] = useState('')
-  const [plate, setPlate] = useState('')
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,7 +61,6 @@ export function NewTransferDialog({
 
   const held = (productId: string) => stock.find((row) => row.productId === productId)?.quantity ?? 0
 
-  const phoneOk = /^[+()\d][\d\s()+-]*$/.test(driverPhone.trim()) && driverPhone.trim().length >= 7
   const linesOk =
     lines.length > 0 &&
     lines.every((line) => {
@@ -75,10 +71,7 @@ export function NewTransferDialog({
     fromId !== '' &&
     toId !== '' &&
     fromId !== toId &&
-    linesOk &&
-    driverName.trim().length >= 2 &&
-    phoneOk &&
-    plate.trim().length >= 2
+    linesOk
 
   function change(key: number, patch: Partial<Line>) {
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)))
@@ -97,9 +90,6 @@ export function NewTransferDialog({
           fromLocationId: fromId,
           toLocationId: toId,
           items: lines.map((line) => ({ productId: line.productId, quantity: Number(line.quantity) })),
-          driverName: driverName.trim(),
-          driverPhone: driverPhone.trim(),
-          vehiclePlate: plate.trim(),
           ...(notes.trim() ? { notes: notes.trim() } : {}),
         },
       })
@@ -217,29 +207,6 @@ export function NewTransferDialog({
               </button>
             </>
           ) : null}
-
-          <h3 className={styles.gridHead}>{t('dlg.driver')}</h3>
-
-          <label className={styles.field}>
-            <span>
-              {t('dlg.driverName')}<em>{t('common.required')}</em>
-            </span>
-            <input value={driverName} onChange={(event) => setDriverName(event.target.value)} maxLength={120} placeholder={t('dlg.phDriverName')} />
-          </label>
-
-          <label className={styles.field}>
-            <span>
-              {t('dlg.driverPhone')}<em>{t('common.required')}</em>
-            </span>
-            <input type="tel" inputMode="tel" value={driverPhone} onChange={(event) => setDriverPhone(event.target.value)} maxLength={24} placeholder="09…" />
-          </label>
-
-          <label className={styles.field}>
-            <span>
-              {t('dlg.vehiclePlate')}<em>{t('common.required')}</em>
-            </span>
-            <input value={plate} onChange={(event) => setPlate(event.target.value)} maxLength={40} placeholder={t('dlg.phPlate')} />
-          </label>
 
           <label className={styles.field}>
             <span>

@@ -1025,12 +1025,6 @@ export default function Requests() {
             push('success', message)
             setReloadKey((n) => n + 1)
           }}
-          onSent={(request) => {
-            // Filed for the store; now the car, exactly as for a request.
-            setSendingAsBranch(false)
-            setReloadKey((n) => n + 1)
-            setApproving(request)
-          }}
         />
       ) : null}
 
