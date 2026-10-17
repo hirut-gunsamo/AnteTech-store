@@ -422,8 +422,6 @@ export default function Inventory() {
     },
   ]
 
-  // The biggest shelf on screen sets the length of every stock bar.
-  const maxQty = Math.max(1, ...filtered.map((item) => item.quantity))
   const stockValue = filtered.reduce(
     (sum, item) => sum + item.quantity * Number(item.product.price ?? 0),
     0,
@@ -527,12 +525,6 @@ export default function Inventory() {
                 onClick={() => applyBranch(card.id)}
               >
                 {card.name}
-                <span className={styles.tabCount}>{count(card.products)}</span>
-                {card.low > 0 ? (
-                  <span className={styles.tabLow} title={t('inv.lowStock')}>
-                    {count(card.low)}
-                  </span>
-                ) : null}
               </button>
             ))}
           </div>
@@ -608,21 +600,13 @@ export default function Inventory() {
                         key={row.id}
                         // Read by the phone layout's ::after to rebuild the
                         // "Store · N in stock" line without extra markup.
-                        data-meta={`${row.product.sku} · ${t('inv.nInStock', { n: count(row.quantity) })}`}
+                        data-meta={t('inv.nInStock', { n: count(row.quantity) })}
                         data-state={state}
                         className={styles.clickableRow}
                         onClick={() => setDetailsOf(row)}
                       >
                         <td data-col="product" data-label={t('inv.product')}>
-                          <span className={styles.productCell}>
-                            <span className={styles.skuIcon} data-category={row.product.category} aria-hidden="true">
-                              <Icon name={row.product.category === 'SERIALIZED' ? 'phone' : 'box'} size={13} />
-                            </span>
-                            <span className={styles.productText}>
-                              <strong>{row.product.name}</strong>
-                              <em>{row.product.sku}</em>
-                            </span>
-                          </span>
+                          <strong className={styles.strong}>{row.product.name}</strong>
                         </td>
 
                         <td data-col="category" data-label={t('inv.category')}>
@@ -638,12 +622,7 @@ export default function Inventory() {
                         </td>
 
                         <td data-col="qty" data-label={t('inv.onShelf')}>
-                          <span className={styles.qtyCell}>
-                            <strong className="tabular">{count(row.quantity)}</strong>
-                            <span className={styles.bar} data-state={state} aria-hidden="true">
-                              <span style={{ width: `${Math.max(4, (row.quantity / maxQty) * 100)}%` }} />
-                            </span>
-                          </span>
+                          <strong className={`${styles.strong} tabular`}>{count(row.quantity)}</strong>
                         </td>
 
                         <td data-col="status" data-label={t('common.status')}>
