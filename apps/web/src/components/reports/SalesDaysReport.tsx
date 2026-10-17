@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { Card, Empty } from '../Card'
+import { useAuth } from '../../auth/context'
 import { api } from '../../lib/api'
+import { useBranchList } from '../../lib/branches'
 import { count, currency, shortDate } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { groupByDay, type SalesDay } from '../../lib/salesDays'
@@ -31,8 +33,40 @@ function monthsBetween(from: string, to: string) {
  * paid, what was taken off (deductions and expenses) and what is left. A
  * seller sees only their own days; the Owner every store's.
  */
-export function SalesDaysReport({ from, to, branch, reload }: { from: string; to: string; branch: string; reload: number }) {
+export function SalesDaysReport({
+  from: pageFrom,
+  to: pageTo,
+  branch: pageBranch,
+  reload,
+}: {
+  from: string
+  to: string
+  branch: string
+  reload: number
+}) {
   const t = useT()
+  const { user } = useAuth()
+  const branchList = useBranchList()
+  const isOwner = user?.role === 'OWNER'
+
+  // As on the SIM app: the table's own day (today first; cleared, the whole
+  // period shows) and, for the Owner, its own store, taken on Apply.
+  const [tableDay, setTableDay] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}-${`${now.getDate()}`.padStart(2, '0')}`
+  })
+  const [storeDraft, setStoreDraft] = useState(pageBranch)
+  const [tableStore, setTableStore] = useState(pageBranch)
+
+  useEffect(() => {
+    setStoreDraft(pageBranch)
+    setTableStore(pageBranch)
+  }, [pageBranch])
+
+  const from = tableDay || pageFrom
+  const to = tableDay || pageTo
+  const branch = isOwner ? tableStore : pageBranch
+
   const [sales, setSales] = useState<Sale[] | null>(null)
   const [deductions, setDeductions] = useState<Deduction[]>([])
   const [expenses, setExpenses] = useState<ExpenseReport['expenses']>([])
@@ -123,6 +157,46 @@ export function SalesDaysReport({ from, to, branch, reload }: { from: string; to
           : t('ds.note')
       }
     >
+      <div className={styles.branchBar}>
+        <input
+          type="date"
+          className={styles.branchSelect}
+          value={tableDay}
+          onChange={(event) => setTableDay(event.target.value)}
+          aria-label={t('req.date')}
+        />
+        {tableDay ? (
+          <button type="button" className={styles.apply} onClick={() => setTableDay('')}>
+            {t('ds.allDates')}
+          </button>
+        ) : null}
+        {isOwner ? (
+          <>
+            <select
+              className={styles.branchSelect}
+              value={storeDraft}
+              onChange={(event) => setStoreDraft(event.target.value)}
+              aria-label={t('inv.branchLabel')}
+            >
+              <option value="ALL">{t('inv.allBranches')}</option>
+              {branchList.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className={styles.apply}
+              onClick={() => setTableStore(storeDraft)}
+              disabled={tableStore === storeDraft}
+            >
+              {t('rep.apply')}
+            </button>
+          </>
+        ) : null}
+      </div>
+
       {sales === null ? (
         <Empty>{t('common.loading')}</Empty>
       ) : days.length === 0 ? (

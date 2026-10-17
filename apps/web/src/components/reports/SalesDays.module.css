@@ -253,3 +253,68 @@
   color: var(--muted);
   font-size: 12.5px;
 }
+
+/* The table's own day and store, top right, as on the SIM app. */
+.branchBar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.branchSelect {
+  min-width: 200px;
+  max-width: 100%;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--brand) 55%, var(--border));
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.apply {
+  padding: 8px 15px;
+  border: 1px solid color-mix(in srgb, var(--brand) 62%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--brand) 14%, var(--surface));
+  color: var(--brand-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.apply:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--brand) 22%, var(--surface));
+  border-color: color-mix(in srgb, var(--brand) 80%, var(--border));
+}
+
+.apply:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.branchSelect:focus-visible,
+.apply:focus-visible {
+  outline: 2px solid var(--brand-dark);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .branchBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .branchSelect,
+  .apply {
+    width: 100%;
+    min-width: 0;
+  }
+}
