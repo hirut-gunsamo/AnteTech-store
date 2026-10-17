@@ -90,32 +90,50 @@
 
 .totals {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  max-width: 460px;
-  gap: 12px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
 }
 
 .totals div {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 11px 13px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-2);
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--tone-line, var(--border));
+  border-radius: var(--radius-lg);
+  background: var(--tone-bg, var(--surface));
+  min-width: 0;
+}
+
+.totals div[data-tone='blue'] {
+  --tone-bg: color-mix(in srgb, var(--brand) 9%, var(--surface));
+  --tone-line: color-mix(in srgb, var(--brand) 32%, transparent);
+}
+
+.totals div[data-tone='green'] {
+  --tone-bg: color-mix(in srgb, var(--success) 9%, var(--surface));
+  --tone-line: color-mix(in srgb, var(--success) 32%, transparent);
+}
+
+.totals div[data-tone='amber'] {
+  --tone-bg: color-mix(in srgb, var(--warning) 11%, var(--surface));
+  --tone-line: color-mix(in srgb, var(--warning) 36%, transparent);
 }
 
 .totals strong {
-  font-size: 19px;
+  font-size: clamp(18px, 1.8vw, 22px);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .totals span {
-  font-size: 11.5px;
-  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
 }
 
 /* ---------- Tabs ----------
@@ -181,11 +199,33 @@
   border-radius: var(--radius-sm);
 }
 
-/* ---------- Table ---------- */
+/* ---------- Table: every line visible ---------- */
+
+.tabCount {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tabActive .tabCount {
+  background: var(--brand-subtle);
+  color: var(--brand-text);
+}
 
 .scroll {
   overflow-x: auto;
   max-width: 100%;
+  border: 1px solid var(--grid-line);
+  border-radius: 10px;
+  --grid-line: color-mix(in srgb, var(--text) 16%, transparent);
+}
+
+.scroll:has([role='menu']) {
+  overflow: visible;
 }
 
 .table {
@@ -197,45 +237,143 @@
 
 .table th,
 .table td {
-  padding-left: 11px;
-  padding-right: 11px;
+  padding: 12px 13px;
   text-align: left;
+  border-bottom: 1px solid var(--grid-line);
+  border-right: 1px solid var(--grid-line);
+}
+
+.table th:last-child,
+.table td:last-child {
+  border-right: none;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .table th {
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: 11px;
+  padding-bottom: 11px;
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
+  letter-spacing: 0.05em;
+  color: var(--text-2);
   background: var(--surface-2);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
-.table th:first-child {
-  border-left: 1px solid var(--border);
-  border-radius: 9px 0 0 0;
-}
-
-.table th:last-child {
-  border-right: 1px solid var(--border);
-  border-radius: 0 9px 0 0;
-}
-
 .table td {
-  padding-top: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
   color: var(--text-2);
   white-space: nowrap;
 }
 
+.table tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--surface-2) 45%, var(--surface));
+}
+
+.table tbody tr {
+  transition: background 0.12s ease;
+}
+
 .table tbody tr:hover td {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--brand) 7%, var(--surface));
+}
+
+.num {
+  text-align: right !important;
+}
+
+.productCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.productIcon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: #fff;
+  flex-shrink: 0;
+  background: var(--series-2);
+}
+
+.productIcon[data-kind='SERIALIZED'] {
+  background: var(--brand-strong);
+}
+
+.productText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.productText strong {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.productText em {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--info-subtle);
+  color: #0f766e;
+}
+
+.pill[data-kind='SERIALIZED'] {
+  background: var(--brand-subtle);
+  color: var(--brand-text);
+}
+
+.price {
+  color: var(--text) !important;
+  font-weight: 700;
+}
+
+.margin {
+  font-weight: 600;
+  color: var(--success-text);
+}
+
+.margin[data-bad] {
+  color: var(--danger);
+}
+
+.stock {
+  display: inline-block;
+  min-width: 34px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--success-subtle);
+  color: var(--success-text);
+}
+
+.stock[data-empty] {
+  background: var(--danger-subtle);
+  color: var(--danger);
 }
 
 .strong {
@@ -250,6 +388,24 @@
   font-size: 11.5px;
   font-weight: 400;
   color: var(--muted);
+}
+
+/* Tablet: let the name wrap, and shed the least-missed columns. */
+@media (max-width: 1180px) and (min-width: 721px) {
+  .table td[data-col='product'] {
+    white-space: normal;
+  }
+
+  .table [data-col='brand'] {
+    display: none;
+  }
+}
+
+@media (max-width: 980px) and (min-width: 721px) {
+  .table [data-col='margin'],
+  .table [data-col='category'] {
+    display: none;
+  }
 }
 
 /* ---------- Row menu ----------
@@ -339,8 +495,22 @@
   background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
-/* Phones: each row becomes its own small card, as elsewhere in the app. */
+/* Phones: each row becomes its own small card: the product across the
+   top, then selling price, buying price, margin and stock side by side. */
 @media (max-width: 720px) {
+  .totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .totals div[data-tone='amber'] {
+    grid-column: 1 / -1;
+  }
+
+  .scroll {
+    border: none;
+    overflow-x: visible;
+  }
+
   .table,
   .table tbody,
   .table tr,
@@ -357,51 +527,53 @@
   .table tbody tr {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
-    gap: 10px 12px;
-    padding: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: 10px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--grid-line);
     border-radius: 12px;
     background: var(--surface);
+    overflow: hidden;
   }
 
+  .table tbody tr:nth-child(even) td,
   .table tbody tr:hover td {
     background: none;
   }
 
   .table td {
-    padding: 0;
+    padding: 9px 12px;
     border: none;
+    border-top: 1px solid var(--grid-line);
     white-space: normal;
+    text-align: left !important;
   }
 
-  .table td:first-child {
+  /* Every value has its label above it; the grid lines split the card. */
+  .table td:nth-child(odd of [data-col='price'], [data-col='cost'], [data-col='margin'], [data-col='stock']) {
+    border-right: 1px solid var(--grid-line);
+  }
+
+  .table td[data-col='product'] {
     grid-column: 1 / -1;
-    padding-bottom: 9px;
-    border-bottom: 1px solid var(--border);
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
+    border-top: none;
+    padding: 12px 52px 12px 12px;
   }
 
-  /* Leaves room for the dots, which sit in the card's top-right corner. */
-  .table td:first-child {
-    padding-right: 40px;
+  .table td[data-col='category'],
+  .table td[data-col='brand'] {
+    display: none;
   }
 
   .table td.actionsCol {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 11px;
+    right: 11px;
     width: auto;
+    padding: 0;
+    border: none;
   }
 
-  .table td.actionsCol::before {
-    content: none;
-  }
-
-  .table td:not(:first-child)::before {
+  .table td:not([data-col='product']):not(.actionsCol)::before {
     content: attr(data-label);
     display: block;
     margin-bottom: 3px;
@@ -419,5 +591,11 @@
   .headActions button {
     flex: 1;
     justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table tbody tr {
+    transition: none;
   }
 }

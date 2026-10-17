@@ -1390,3 +1390,44 @@
     width: 100%;
   }
 }
+
+/* ---------- Visible table lines (desktop and tablet) ---------- */
+
+@media (min-width: 721px) {
+  .scroll {
+    border: 1px solid var(--grid-line);
+    border-radius: 10px;
+    --grid-line: color-mix(in srgb, var(--text) 16%, transparent);
+  }
+
+  .table th,
+  .table td {
+    border-top: none;
+    border-left: none;
+    border-bottom: 1px solid var(--grid-line);
+    border-right: 1px solid var(--grid-line);
+    border-radius: 0 !important;
+  }
+
+  .table th {
+    color: var(--text-2);
+    font-weight: 700;
+  }
+
+  .table th:last-child,
+  .table td:last-child {
+    border-right: none;
+  }
+
+  .table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .table tbody tr:nth-child(even) td {
+    background: color-mix(in srgb, var(--surface-2) 45%, var(--surface));
+  }
+
+  .table tbody tr:hover td {
+    background: color-mix(in srgb, var(--brand) 7%, var(--surface));
+  }
+}
