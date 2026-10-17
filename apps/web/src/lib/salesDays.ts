@@ -86,7 +86,8 @@ export function groupByDay(
     dayOf(row.day, row.user, row.user.branch?.name ?? '—').deductions += Number(row.total)
   }
   for (const row of expenses) {
-    dayOf(localDay(row.expenseDate), row.recordedBy, row.branch.name).expenses += Number(row.amount)
+    // Off the seller it was charged to; older rows fall back to who recorded it.
+    dayOf(localDay(row.expenseDate), row.salesperson ?? row.recordedBy, row.branch.name).expenses += Number(row.amount)
   }
 
   for (const day of days.values()) day.net = day.total - day.deductions - day.expenses

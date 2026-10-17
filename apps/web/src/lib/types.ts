@@ -769,6 +769,8 @@ export type ExpenseReport = {
     createdAt: string
     branch: { id: string; name: string }
     recordedBy: { id: string; name: string }
+    /** The seller whose day it comes off; null for the main store. */
+    salesperson?: { id: string; name: string } | null
   }[]
 }
 

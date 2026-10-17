@@ -146,6 +146,7 @@ model User {
   monthlySalary       Decimal?            @db.Decimal(12, 2)
   assetsRecorded      OfficeAsset[]       @relation("AssetsRecorded")
   expensesRecorded    Expense[]
+  expensesCharged     Expense[] @relation("ExpensesCharged")
   deductionsOwed      Deduction[]         @relation("DeductionsOwed")
   deductionsRecorded  Deduction[]         @relation("DeductionsRecorded")
   payrollPayments     PayrollPayment[]    @relation("PayrollPaid")
@@ -873,10 +874,16 @@ model Expense {
   recordedById String
   recordedBy   User   @relation(fields: [recordedById], references: [id])
 
+  /// The seller whose day it comes off in the sales report. A seller's own
+  /// expense is theirs; the Owner names the seller when recording for a store.
+  salespersonId String?
+  salesperson   User?   @relation("ExpensesCharged", fields: [salespersonId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   @@index([locationId])
   @@index([expenseDate])
+  @@index([salespersonId])
 }
 
 /// Money taken off a seller's pay for one day: goods short or lost.
