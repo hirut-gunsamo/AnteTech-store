@@ -224,7 +224,8 @@ export default function Inventory() {
       if (term) {
         const textHit =
           item.product.name.toLowerCase().includes(term) ||
-          item.product.sku.toLowerCase().includes(term)
+          item.product.sku.toLowerCase().includes(term) ||
+          (item.product.type?.name ?? '').toLowerCase().includes(term)
 
         const serialHit =
           serialMatches?.has(`${item.productId}:${item.locationId}`) ?? false
@@ -571,7 +572,8 @@ export default function Inventory() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    {sortHead('name', t('inv.product'))}
+                    <th scope="col">{t('prod.typeName')}</th>
+                    {sortHead('name', t('prod.model'))}
                     <th scope="col">{t('inv.category')}</th>
                     {sortHead('qty', t('inv.onShelf'))}
                     <th scope="col">{t('common.status')}</th>
@@ -600,12 +602,16 @@ export default function Inventory() {
                         key={row.id}
                         // Read by the phone layout's ::after to rebuild the
                         // "Store · N in stock" line without extra markup.
-                        data-meta={t('inv.nInStock', { n: count(row.quantity) })}
+                        data-meta={[row.product.type?.name, t('inv.nInStock', { n: count(row.quantity) })].filter(Boolean).join(' · ')}
                         data-state={state}
                         className={styles.clickableRow}
                         onClick={() => setDetailsOf(row)}
                       >
-                        <td data-col="product" data-label={t('inv.product')}>
+                        <td data-col="type" data-label={t('prod.typeName')}>
+                          {row.product.type?.name ?? '—'}
+                        </td>
+
+                        <td data-col="product" data-label={t('prod.model')}>
                           <strong className={styles.strong}>{row.product.name}</strong>
                         </td>
 

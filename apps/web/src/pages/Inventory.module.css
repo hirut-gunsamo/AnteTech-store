@@ -701,15 +701,15 @@
 /* Category goes first (the row's icon already tells phone from accessory),
    then the price (the value column still shows what the shelf is worth). */
 @media (max-width: 1080px) and (min-width: 721px) {
-  .table th:nth-child(2),
-  .table td:nth-child(2) {
+  .table th:nth-child(3),
+  .table td:nth-child(3) {
     display: none;
   }
 }
 
 @media (max-width: 900px) and (min-width: 721px) {
-  .table th:nth-child(5),
-  .table td:nth-child(5) {
+  .table th:nth-child(6),
+  .table td:nth-child(6) {
     display: none;
   }
 }
@@ -787,6 +787,7 @@
 
   /* Only the cells that earn their place on a phone are shown; the rest fold
      into the meta line or the details panel. */
+  .table td[data-col='type'],
   .table td[data-col='category'],
   .table td[data-col='qty'],
   .table td[data-col='price'] {
