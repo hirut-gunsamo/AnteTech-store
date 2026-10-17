@@ -16,8 +16,8 @@ import styles from '../inventory/Panel.module.css'
  * or another store.
  *
  * With `asBranch` it is the Owner's "Send to store": they pick the store and
- * the items, and the goods go out at once from the Main Store (or the store
- * they pick). A seller there presses Received.
+ * the items, and the goods go out at once from the Main Store. A seller
+ * there presses Received.
  */
 export function NewRequestDialog({
   onClose,
@@ -32,8 +32,6 @@ export function NewRequestDialog({
   const t = useT()
   const [stores, setStores] = useState<BranchRow[]>([])
   const [storeId, setStoreId] = useState('')
-  // Where it goes out from: the Main Store unless the Owner picks another.
-  const [fromId, setFromId] = useState('')
   const [allStores, setAllStores] = useState<BranchRow[]>([])
   const [onHand, setOnHand] = useState<Map<string, number>>(new Map())
   // As on the SIM app: every product with a box against it, grouped by
@@ -165,7 +163,8 @@ export function NewRequestDialog({
 
   const totalUnits = chosenLines.reduce((sum, line) => sum + line.qty, 0)
 
-  const sendFrom = fromId || allStores.find((row) => row.isMainStock)?.id || ''
+  // Everything goes out from the Main Store.
+  const sendFrom = allStores.find((row) => row.isMainStock)?.id || ''
 
   const canSubmit =
     !busy &&
@@ -283,20 +282,6 @@ export function NewRequestDialog({
             </label>
           ) : null}
 
-          {asBranch ? (
-            <label className={styles.field}>
-              <span>{t('dlg.shipFrom')}</span>
-              <select value={sendFrom} onChange={(event) => setFromId(event.target.value)}>
-                {allStores
-                  .filter((row) => row.id !== storeId)
-                  .map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {row.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          ) : null}
 
           {products.length === 0 ? <p className={styles.none}>{t('common.loading')}</p> : null}
 

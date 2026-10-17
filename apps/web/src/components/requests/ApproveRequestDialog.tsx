@@ -56,10 +56,10 @@ export function ApproveRequestDialog({
   const maxOf = (item: (typeof items)[number]) => item.approvedQuantity ?? item.quantity
 
   const [branches, setBranches] = useState<BranchRow[] | null>(null)
-  const [pickedSource, setSourceBranchId] = useState('')
-  // Restock from the main warehouse, or transfer from another branch.
-  const [sourceMode, setSourceMode] = useState<'MAIN' | 'BRANCH'>('MAIN')
   const [note, setNote] = useState('')
+  // Two steps on one page, as on the SIM app: Approve saves how many of each
+  // item go; then Send sends them. Changing the lot asks for Approve again.
+  const [approved, setApproved] = useState(false)
 
   // Who is driving it over. Asked for here because the branch waiting for the
   // goods is told before the van leaves, not after it arrives.
@@ -111,24 +111,12 @@ export function ApproveRequestDialog({
     return () => controller.abort()
   }, [])
 
-  // Restock ships from an active main warehouse; a transfer from any other
-  // active branch. Never from the branch that raised the request.
-  const sources = useMemo(
-    () =>
-      (branches ?? []).filter(
-        (entry) =>
-          entry.isActive &&
-          entry.id !== request.requestedBy.branch?.id &&
-          (sourceMode === 'MAIN' ? entry.isMainStock : !entry.isMainStock),
-      ),
-    [branches, request.requestedBy.branch?.id, sourceMode],
+  // Everything goes out from the Main Store.
+  const mainStore = useMemo(
+    () => (branches ?? []).find((entry) => entry.isActive && entry.isMainStock) ?? null,
+    [branches],
   )
-
-  // Starts on the first store that can send it (the main store), so the
-  // Owner can approve at once; another can still be picked.
-  const sourceBranchId = sources.some((entry) => entry.id === pickedSource)
-    ? pickedSource
-    : (sources[0]?.id ?? '')
+  const sourceBranchId = mainStore?.id ?? ''
 
   // What the chosen branch holds, so the Owner can see why they might
   // approve less before the API refuses a shipment it cannot cover.
@@ -161,7 +149,7 @@ export function ApproveRequestDialog({
   }, [sourceBranchId])
 
 
-  const sourceName = sources.find((entry) => entry.id === sourceBranchId)?.name
+  const sourceName = mainStore?.name
   const stock =
     stockOf !== null && stockOf.branchId === sourceBranchId
       ? stockOf.byProduct
@@ -202,8 +190,35 @@ export function ApproveRequestDialog({
     sending > 0 &&
     sourceBranchId !== ''
 
+  // Each request's lines, as they will be approved and sent.
+  const linesOf = (entry: StockRequest) =>
+    lines
+      .filter((line) => entry.items.some((item) => item.id === line.item.id))
+      .map((line) => ({ itemId: line.item.id, approvedQuantity: sendOf(line) }))
+
   function setQuantity(itemId: string, value: string) {
     setQuantities((current) => ({ ...current, [itemId]: value }))
+  }
+
+  // Step 1: save how many of each item go, for every request in the lot.
+  async function approve() {
+    if (!canSubmit) return
+    setBusy(true)
+    setError(null)
+    try {
+      for (const entry of included) {
+        // A request whose lines all come to 0 here is not part of this lot.
+        await api(`/api/requests/${entry.id}/approve-quantities`, {
+          method: 'PATCH',
+          body: { items: linesOf(entry) },
+        })
+      }
+      setApproved(true)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t('appr.approveFailed'))
+    } finally {
+      setBusy(false)
+    }
   }
 
   function fillFromStock() {
@@ -230,6 +245,10 @@ export function ApproveRequestDialog({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!canSubmit) return
+    if (!approved) {
+      await approve()
+      return
+    }
 
     // Send asks first, as on the SIM app.
     if (
@@ -253,7 +272,6 @@ export function ApproveRequestDialog({
         method: 'POST',
         body: {
           requestIds: included.map((entry) => entry.id),
-          sourceBranchId,
           ...(note.trim() ? { notes: note.trim() } : {}),
           // Every line as chosen here; a decided line can only go down.
           items: lines.map((line) => ({
@@ -295,7 +313,7 @@ export function ApproveRequestDialog({
       >
         <header className={styles.head}>
           <div>
-            <h2>{t(decided ? 'dlg.sendApproved' : 'dlg.approveRequest')}</h2>
+            <h2>{t(approved ? 'dlg.sendApproved' : 'dlg.approveRequest')}</h2>
             <p className="tabular">{requestRef(request)}</p>
           </div>
           <button type="button" onClick={onClose} aria-label={t('common.close')}>
@@ -305,47 +323,11 @@ export function ApproveRequestDialog({
 
         <form className={styles.body} onSubmit={handleSubmit}>
           <p className={styles.warn}>
-            {t(decided ? 'dlg.sendIntro' : 'dlg.approveIntro', {
+            {t(approved ? 'dlg.sendIntro' : 'dlg.approveIntro', {
               store: request.requestedBy.branch?.name ?? t('req.unknownBranch'),
-              units: count(decided ? lines.reduce((sum, line) => sum + line.qty, 0) : requested),
+              units: count(approved ? sending : requested),
             })}
           </p>
-
-          <label className={styles.field}>
-            <span>{t('dlg.sendHow')}</span>
-            <select
-              value={sourceMode}
-              onChange={(event) => {
-                setSourceMode(event.target.value as 'MAIN' | 'BRANCH')
-                setSourceBranchId('')
-              }}
-            >
-              <option value="MAIN">{t('dlg.fromMain')}</option>
-              <option value="BRANCH">{t('dlg.fromBranch')}</option>
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            <span>
-              {t('dlg.shipFrom')}<em>{t('common.required')}</em>
-            </span>
-            <select
-              value={sourceBranchId}
-              onChange={(event) => setSourceBranchId(event.target.value)}
-              required
-            >
-              <option value="">{t('dlg.selectSource')}</option>
-              {sources.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {branches !== null && sources.length === 0 ? (
-            <p className={styles.blocked}>{t('dlg.noSource')}</p>
-          ) : null}
 
           {/* The same store's other waiting requests can join this lot. */}
           {included.length > 1 || others.length > 0 ? (
@@ -358,7 +340,10 @@ export function ApproveRequestDialog({
                     <button
                       type="button"
                       aria-label={t('a11y.removeItem', { n: requestRef(entry) })}
-                      onClick={() => setIncluded((current) => current.filter((row) => row.id !== entry.id))}
+                      onClick={() => {
+                        setIncluded((current) => current.filter((row) => row.id !== entry.id))
+                        setApproved(false)
+                      }}
                     >
                       ✕
                     </button>
@@ -370,7 +355,10 @@ export function ApproveRequestDialog({
                   key={entry.id}
                   type="button"
                   className={styles.lotAdd}
-                  onClick={() => setIncluded((current) => [...current, entry])}
+                  onClick={() => {
+                    setIncluded((current) => [...current, entry])
+                    setApproved(false)
+                  }}
                 >
                   + {requestRef(entry)} · {t('dlg.units', { n: count(requestUnitCount(entry)) })}
                 </button>
@@ -402,6 +390,8 @@ export function ApproveRequestDialog({
                     step="1"
                     value={line.raw}
                     onChange={(event) => setQuantity(line.item.id, event.target.value)}
+                    // Approved: the amounts are set; Send sends them as they are.
+                    readOnly={approved}
                     aria-label={t('dlg.approveQtyFor', {
                       product: line.item.product.name,
                     })}
@@ -411,7 +401,7 @@ export function ApproveRequestDialog({
                     <button
                       type="button"
                       aria-label="+1"
-                      disabled={line.qty >= maxOf(line.item)}
+                      disabled={approved || line.qty >= maxOf(line.item)}
                       onClick={() => setQuantity(line.item.id, String(Math.min(maxOf(line.item), line.qty + 1)))}
                     >
                       ▲
@@ -419,7 +409,7 @@ export function ApproveRequestDialog({
                     <button
                       type="button"
                       aria-label="-1"
-                      disabled={line.qty <= 0}
+                      disabled={approved || line.qty <= 0}
                       onClick={() => setQuantity(line.item.id, String(Math.max(0, line.qty - 1)))}
                     >
                       ▼
@@ -450,7 +440,7 @@ export function ApproveRequestDialog({
             </div>
           ))}
 
-          {!decided ? (
+          {!approved && !decided ? (
             <div className={styles.approveShortcuts}>
               {stock ? (
                 <button type="button" className={styles.addLine} onClick={fillFromStock}>
@@ -493,6 +483,10 @@ export function ApproveRequestDialog({
             />
           </label>
 
+          {approved ? (
+            <p className={styles.lineNote}>{t('dlg.approvedNowSend', { from: sourceName ?? '' })}</p>
+          ) : null}
+
           {error ? <p className={styles.error}>{error}</p> : null}
           {/* Why the button is off, next to it rather than up in the list. */}
           {anyOverStock ? (
@@ -500,11 +494,23 @@ export function ApproveRequestDialog({
           ) : null}
 
           <div className={styles.actions}>
-            <button type="button" className={styles.cancel} onClick={onClose}>
-              {t('common.cancel')}
-            </button>
+            {approved ? (
+              <button type="button" className={styles.cancel} onClick={() => setApproved(false)}>
+                {t('dlg.changeAmounts')}
+              </button>
+            ) : (
+              <button type="button" className={styles.cancel} onClick={onClose}>
+                {t('common.cancel')}
+              </button>
+            )}
             <button type="submit" className={styles.submit} disabled={!canSubmit}>
-              {busy ? t('dlg.sending') : t('appr.send')}
+              {busy
+                ? approved
+                  ? t('dlg.sending')
+                  : t('dlg.approving')
+                : approved
+                  ? t('appr.send')
+                  : t('appr.approve')}
             </button>
           </div>
         </form>

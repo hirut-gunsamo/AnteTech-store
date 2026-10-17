@@ -258,6 +258,32 @@ export async function approveRequest(
 }
 
 /**
+ * Step one of sending, as on the SIM app: the Owner saves how many of each
+ * item go (the same as asked, or fewer). Nothing moves yet; the request waits
+ * for Send. A line left out goes in full.
+ */
+export async function approveQuantities(
+  id: string,
+  items: { itemId: string; approvedQuantity: number }[],
+  viewer: Viewer,
+) {
+  const request = await prisma.stockRequest.findUnique({
+    where: { id },
+    include: { items: true },
+  });
+
+  if (!request) throw new Error("REQUEST_NOT_FOUND");
+  if (request.status !== "PENDING") throw new Error("REQUEST_NOT_PENDING");
+  if (request.requestedToId !== viewer.userId) throw new Error("NOT_THE_ADDRESSEE");
+
+  const approved = resolveApprovedQuantities(request.items, items);
+
+  await prisma.$transaction((tx) => recordApprovedQuantities(tx, approved));
+
+  return getRequestById(id, viewer);
+}
+
+/**
  * One lot for a store, as on the SIM app: several of its waiting requests go
  * out together as a single shipment, and a seller there receives them all
  * with one Received. The goods come off the source store now.
@@ -321,8 +347,11 @@ export async function shipRequests(
   }
   const shipping = [...totals].map(([productId, quantity]) => ({ productId, quantity }));
 
-  if (!data.sourceBranchId) throw new Error("SOURCE_REQUIRED");
-  const sourceBranchId = data.sourceBranchId;
+  // Everything goes out from the Main Store unless another store is named.
+  const sourceBranchId =
+    data.sourceBranchId ??
+    (await prisma.stockLocation.findFirst({ where: { isMainStock: true, isActive: true }, select: { id: true } }))?.id;
+  if (!sourceBranchId) throw new Error("SOURCE_REQUIRED");
   if (destinationId === sourceBranchId) throw new Error("SAME_BRANCH");
 
   const source = await prisma.stockLocation.findUnique({
