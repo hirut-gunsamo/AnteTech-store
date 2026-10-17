@@ -19,6 +19,8 @@ const createSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   // The Owner names the store; a seller's is always their own.
   branchId: z.string().min(1).optional(),
+  // The Owner names the seller whose day it comes off; a seller's is their own.
+  salespersonId: z.string().min(1).optional(),
 });
 
 const day = (value: string) => new Date(`${value}T00:00:00`);
@@ -52,6 +54,7 @@ export async function expenseRoutes(app: FastifyInstance) {
         include: {
           location: { select: { id: true, name: true } },
           recordedBy: { select: { id: true, name: true } },
+          salesperson: { select: { id: true, name: true } },
         },
         orderBy: [{ expenseDate: "desc" }, { createdAt: "desc" }],
       });
@@ -89,6 +92,7 @@ export async function expenseRoutes(app: FastifyInstance) {
           createdAt: row.createdAt.toISOString(),
           branch: row.location,
           recordedBy: row.recordedBy,
+          salesperson: row.salesperson,
         })),
       });
     },
@@ -106,9 +110,26 @@ export async function expenseRoutes(app: FastifyInstance) {
 
     const store = await prisma.stockLocation.findUnique({
       where: { id: branchId },
-      select: { id: true, isActive: true },
+      select: { id: true, isActive: true, isMainStock: true },
     });
     if (!store || !store.isActive) return reply.status(400).send({ message: "Choose an open store" });
+
+    // Every selling-store expense comes off one seller's day. The main store
+    // has no sellers, so its expenses belong to no one's day.
+    let salespersonId: string | null = null;
+    if (viewer.role === "SALES") {
+      salespersonId = viewer.userId;
+    } else if (!store.isMainStock) {
+      if (!result.data.salespersonId) {
+        return reply.status(400).send({ message: "Choose the salesperson it belongs to" });
+      }
+      const seller = await prisma.user.findFirst({
+        where: { id: result.data.salespersonId, role: "SALES", branchId: store.id },
+        select: { id: true },
+      });
+      if (!seller) return reply.status(400).send({ message: "Choose a salesperson of that store" });
+      salespersonId = seller.id;
+    }
 
     const expense = await prisma.expense.create({
       data: {
@@ -118,6 +139,7 @@ export async function expenseRoutes(app: FastifyInstance) {
         note: result.data.note?.trim() || null,
         expenseDate: result.data.date ? day(result.data.date) : new Date(),
         recordedById: viewer.userId,
+        salespersonId,
       },
     });
 

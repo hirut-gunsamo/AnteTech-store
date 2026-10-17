@@ -6,6 +6,7 @@ import { SearchBox } from '../components/SearchBox'
 import { Toasts } from '../components/Toasts'
 import { api } from '../lib/api'
 import { useBranchList } from '../lib/branches'
+import type { AppUser } from '../lib/types'
 import { count, currency, shortDate } from '../lib/format'
 import { useT } from '../lib/i18n'
 import { matches } from '../lib/search'
@@ -39,6 +40,9 @@ function AddExpenseDialog({
   const [date, setDate] = useState(isoDay(new Date()))
   const [note, setNote] = useState('')
   const [branchId, setBranchId] = useState('')
+  const [sellerId, setSellerId] = useState('')
+  const [sellers, setSellers] = useState<AppUser[]>([])
+  const [mainId, setMainId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,8 +54,33 @@ function AddExpenseDialog({
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // The Owner names the seller whose day it comes off: the active sellers of
+  // the chosen store. The main store has none.
+  useEffect(() => {
+    if (!stores) return
+    const controller = new AbortController()
+    Promise.all([
+      api<{ users: AppUser[] }>('/api/users', { signal: controller.signal }),
+      api<{ branches: { id: string; isMainStock: boolean }[] }>('/api/branches', { signal: controller.signal }),
+    ])
+      .then(([userRes, branchRes]) => {
+        setSellers((userRes.users ?? []).filter((row) => row.role === 'SALES' && row.isActive))
+        setMainId(branchRes.branches?.find((row) => row.isMainStock)?.id ?? null)
+      })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [stores])
+
+  const storeSellers = sellers.filter((row) => row.branchId === branchId)
+  const needsSeller = stores !== null && branchId !== '' && branchId !== mainId
+
   const value = Number(amount)
-  const valid = value > 0 && reason.trim().length >= 2 && date !== '' && (stores === null || branchId !== '')
+  const valid =
+    value > 0 &&
+    reason.trim().length >= 2 &&
+    date !== '' &&
+    (stores === null || branchId !== '') &&
+    (!needsSeller || sellerId !== '')
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -66,6 +95,7 @@ function AddExpenseDialog({
           reason: reason.trim(),
           date,
           ...(stores ? { branchId } : {}),
+          ...(needsSeller ? { salespersonId: sellerId } : {}),
           ...(note.trim() ? { note: note.trim() } : {}),
         },
       })
@@ -96,11 +126,34 @@ function AddExpenseDialog({
               <span>
                 {t('common.branch')}<em>{t('common.required')}</em>
               </span>
-              <select value={branchId} onChange={(event) => setBranchId(event.target.value)} required>
+              <select
+                value={branchId}
+                onChange={(event) => {
+                  setBranchId(event.target.value)
+                  setSellerId('')
+                }}
+                required
+              >
                 <option value="">{t('exp.chooseStore')}</option>
                 {stores.map(([id, name]) => (
                   <option key={id} value={id}>
                     {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
+          {needsSeller ? (
+            <label className={panel.field}>
+              <span>
+                {t('exp.salesperson')}<em>{t('common.required')}</em>
+              </span>
+              <select value={sellerId} onChange={(event) => setSellerId(event.target.value)} required>
+                <option value="">{t('exp.chooseSalesperson')}</option>
+                {storeSellers.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
                   </option>
                 ))}
               </select>
