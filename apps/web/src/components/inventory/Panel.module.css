@@ -1180,3 +1180,25 @@
   border-color: var(--brand);
   color: var(--brand-text);
 }
+
+/* A category heading that folds its rows open and shut. */
+summary.gridHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+summary.gridHead::-webkit-details-marker {
+  display: none;
+}
+
+summary.gridHead::after {
+  content: '▾';
+  font-size: 11px;
+}
+
+details.gridGroup:not([open]) > summary.gridHead::after {
+  content: '▸';
+}
