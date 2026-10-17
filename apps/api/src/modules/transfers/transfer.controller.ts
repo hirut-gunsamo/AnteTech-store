@@ -280,7 +280,7 @@ export async function createTransferController(
   const result = createTransferSchema.safeParse(request.body);
   if (!result.success) {
     return reply.status(400).send({
-      message: "Choose both stores, at least one item, and the driver's name, phone and plate",
+      message: "Choose both stores and at least one item",
       errors: result.error.flatten(),
     });
   }

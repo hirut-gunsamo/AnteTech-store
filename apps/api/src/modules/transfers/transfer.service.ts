@@ -342,17 +342,14 @@ export async function cancelTransfer(
 
 /**
  * The Owner moves stock from one branch to another without a request: the
- * goods leave the source now, with the driver named, and reach the other
- * store when a seller there presses Received.
+ * goods leave the source now and reach the other store when a seller there
+ * presses Received. The stores are close together, so no driver is named.
  */
 export async function createTransfer(
   data: {
     fromLocationId: string;
     toLocationId: string;
     items: { productId: string; quantity: number }[];
-    driverName: string;
-    driverPhone: string;
-    vehiclePlate: string;
     notes?: string;
   },
   viewer: Viewer,
@@ -383,9 +380,6 @@ export async function createTransfer(
         deliveredById: viewer.userId,
         shippedAt: new Date(),
         notes: data.notes?.trim() || null,
-        driverName: data.driverName,
-        driverPhone: data.driverPhone,
-        vehiclePlate: data.vehiclePlate,
         items: { create: items },
       },
     });

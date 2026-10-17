@@ -47,12 +47,6 @@ function handleRequestError(
         message: "Name the store the stock ships from",
       });
 
-    case "DRIVER_REQUIRED":
-      return reply.status(400).send({
-        message:
-          "Name the driver, their phone number and the vehicle plate",
-      });
-
     case "NOT_THE_ADDRESSEE":
       return reply.status(403).send({
         message: "This request was not addressed to you",

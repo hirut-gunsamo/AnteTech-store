@@ -14,7 +14,8 @@ import styles from '../inventory/Panel.module.css'
  * spare. Approval creates the transfer, so neither choice can be deferred.
  *
  * Every request is a seller's restock for their store, so every approval
- * ships: there is always a source to pick and a driver to name.
+ * ships: there is always a source to pick. The stores are close together,
+ * so no driver or vehicle is named.
  */
 export function ApproveRequestDialog({
   request,

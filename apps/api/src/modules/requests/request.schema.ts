@@ -26,17 +26,6 @@ export const createRequestSchema = z.object({
 export const approveRequestSchema = z.object({
   sourceBranchId: z.string().min(1).optional(),
   notes: z.string().max(500).optional(),
-
-  // Who is carrying it. Required: the goods travel by road to the store.
-  driverName: z.string().trim().min(2).max(120).optional(),
-  driverPhone: z
-    .string()
-    .trim()
-    .min(7, "A phone number needs at least 7 digits")
-    .max(24)
-    .regex(/^[+()\d][\d\s()+-]*$/, "Use digits, spaces, and + ( ) - only")
-    .optional(),
-  vehiclePlate: z.string().trim().min(2).max(40).optional(),
   items: z
     .array(
       z.object({
