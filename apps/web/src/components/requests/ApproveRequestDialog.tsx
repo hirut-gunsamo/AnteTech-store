@@ -18,24 +18,42 @@ import styles from '../inventory/Panel.module.css'
  * so no driver or vehicle is named.
  */
 export function ApproveRequestDialog({
-  request,
+  request: opened,
+  waiting = [],
   onClose,
   onDone,
 }: {
   request: StockRequest
+  /** Every request waiting on the Owner, to offer the same store's others. */
+  waiting?: StockRequest[]
   onClose: () => void
   onDone: (message: string) => void
 }) {
   const t = useT()
 
+  // One lot for a store, as on the SIM app: the request the Owner opened, and
+  // any of the same store's other waiting requests added to it.
+  const [included, setIncluded] = useState<StockRequest[]>([opened])
+  const request = opened
+  const storeId = opened.requestedBy.branch?.id
+  const others = waiting.filter(
+    (entry) =>
+      entry.status === 'PENDING' &&
+      entry.requestedBy.branch?.id === storeId &&
+      !included.some((chosen) => chosen.id === entry.id) &&
+      // Half-decided requests are finished on their own first.
+      (entry.items.every((item) => item.approvedQuantity === null) ||
+        entry.items.every((item) => item.approvedQuantity !== null)),
+  )
+
   // Items already approved or rejected one by one: only the approved ones are
   // sent, and each can still be lowered here (the store may have fewer).
-  const decided = request.items.some((item) => item.approvedQuantity !== null)
-  const items = decided
-    ? request.items.filter((item) => (item.approvedQuantity ?? 0) > 0)
-    : request.items
+  const decided = included.some((entry) => entry.items.some((item) => item.approvedQuantity !== null))
+  const items = included.flatMap((entry) =>
+    entry.items.filter((item) => item.approvedQuantity === null || item.approvedQuantity > 0),
+  )
   // The most a line can send: what was approved, or else what was asked for.
-  const maxOf = (item: (typeof items)[number]) => (decided ? (item.approvedQuantity ?? 0) : item.quantity)
+  const maxOf = (item: (typeof items)[number]) => item.approvedQuantity ?? item.quantity
 
   const [branches, setBranches] = useState<BranchRow[] | null>(null)
   const [pickedSource, setSourceBranchId] = useState('')
@@ -167,7 +185,7 @@ export function ApproveRequestDialog({
     }
   })
 
-  const requested = requestUnitCount(request)
+  const requested = included.reduce((sum, entry) => sum + requestUnitCount(entry), 0)
   const approving = lines.reduce((sum, line) => sum + line.qty, 0)
   const allValid = lines.every((line) => line.valid)
   const anyOverStock = lines.some((line) => line.overStock)
@@ -193,9 +211,9 @@ export function ApproveRequestDialog({
 
     setQuantities(
       Object.fromEntries(
-        request.items.map((item) => [
+        items.map((item) => [
           item.id,
-          String(Math.min(item.quantity, stock.get(item.product.id) ?? 0)),
+          String(Math.min(maxOf(item), stock.get(item.product.id) ?? 0)),
         ]),
       ),
     )
@@ -204,7 +222,7 @@ export function ApproveRequestDialog({
   function approveAll() {
     setQuantities(
       Object.fromEntries(
-        request.items.map((item) => [item.id, String(item.quantity)]),
+        items.map((item) => [item.id, String(maxOf(item))]),
       ),
     )
   }
@@ -213,13 +231,28 @@ export function ApproveRequestDialog({
     event.preventDefault()
     if (!canSubmit) return
 
+    // Send asks first, as on the SIM app.
+    if (
+      !window.confirm(
+        t('dlg.sendLotConfirm', {
+          units: count(sending),
+          n: included.length,
+          from: sourceName ?? '',
+          store: request.requestedBy.branch?.name ?? '',
+        }),
+      )
+    ) {
+      return
+    }
+
     setBusy(true)
     setError(null)
 
     try {
-      await api(`/api/requests/${request.id}/approve`, {
-        method: 'PATCH',
+      await api('/api/requests/ship', {
+        method: 'POST',
         body: {
+          requestIds: included.map((entry) => entry.id),
           sourceBranchId,
           ...(note.trim() ? { notes: note.trim() } : {}),
           // Every line as chosen here; a decided line can only go down.
@@ -312,6 +345,37 @@ export function ApproveRequestDialog({
 
           {branches !== null && sources.length === 0 ? (
             <p className={styles.blocked}>{t('dlg.noSource')}</p>
+          ) : null}
+
+          {/* The same store's other waiting requests can join this lot. */}
+          {included.length > 1 || others.length > 0 ? (
+            <div className={styles.lot}>
+              <span className={styles.lotHead}>{t('dlg.lotTitle', { n: included.length })}</span>
+              {included.map((entry) => (
+                <span key={entry.id} className={styles.lotChip}>
+                  {requestRef(entry)}
+                  {entry.id !== opened.id ? (
+                    <button
+                      type="button"
+                      aria-label={t('a11y.removeItem', { n: requestRef(entry) })}
+                      onClick={() => setIncluded((current) => current.filter((row) => row.id !== entry.id))}
+                    >
+                      ✕
+                    </button>
+                  ) : null}
+                </span>
+              ))}
+              {others.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className={styles.lotAdd}
+                  onClick={() => setIncluded((current) => [...current, entry])}
+                >
+                  + {requestRef(entry)} · {t('dlg.units', { n: count(requestUnitCount(entry)) })}
+                </button>
+              ))}
+            </div>
           ) : null}
 
           {lines.map((line) => (
@@ -440,7 +504,7 @@ export function ApproveRequestDialog({
               {t('common.cancel')}
             </button>
             <button type="submit" className={styles.submit} disabled={!canSubmit}>
-              {busy ? t('dlg.approving') : t('dlg.approveOnly')}
+              {busy ? t('dlg.sending') : t('appr.send')}
             </button>
           </div>
         </form>

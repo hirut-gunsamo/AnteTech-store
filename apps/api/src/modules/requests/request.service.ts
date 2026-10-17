@@ -8,6 +8,16 @@ import type {
   ListRequestsQuery,
 } from "./request.schema.js";
 
+const shipmentDetail = {
+  id: true,
+  status: true,
+  shippedAt: true,
+  receivedAt: true,
+  receivedBy: { select: { id: true, name: true } },
+  fromLocation: { select: { id: true, name: true } },
+  toLocation: { select: { id: true, name: true } },
+} as const;
+
 const requestDetail = {
   id: true,
   kind: true,
@@ -55,21 +65,21 @@ const requestDetail = {
     },
   },
 
-  transfer: {
-    select: {
-      id: true,
-      status: true,
-      shippedAt: true,
-      receivedAt: true,
-      receivedBy: { select: { id: true, name: true } },
-      driverName: true,
-      driverPhone: true,
-      vehiclePlate: true,
-      fromLocation: { select: { id: true, name: true } },
-      toLocation: { select: { id: true, name: true } },
-    },
-  },
+  transfer: { select: shipmentDetail },
+  shipment: { select: shipmentDetail },
 };
+
+/**
+ * A request in a lot of several reaches its shipment through `shipment`; the
+ * first request of the lot also through `transfer`. Either way the screens
+ * read it as `transfer`.
+ */
+function withShipment<T extends { transfer: unknown; shipment: unknown }>(
+  request: T,
+): Omit<T, "shipment"> {
+  const { shipment, ...rest } = request;
+  return { ...rest, transfer: rest.transfer ?? shipment };
+}
 
 /**
  * A seller asks the Owner to restock their store.
@@ -148,7 +158,7 @@ export async function createRequest(
     throw new Error("INVALID_PRODUCT");
   }
 
-  return prisma.stockRequest.create({
+  const created = await prisma.stockRequest.create({
     data: {
       kind: "RESTOCK",
       requestedById,
@@ -164,8 +174,29 @@ export async function createRequest(
         })),
       },
     },
-    select: requestDetail,
+    select: { id: true },
   });
+
+  // The Owner's "Send to store" goes out at once, from the store they picked:
+  // nothing waits for approval, and a seller there presses Received.
+  if (asBranch) {
+    const mainStore = data.sourceBranchId
+      ? null
+      : await prisma.stockLocation.findFirst({ where: { isMainStock: true }, select: { id: true } });
+
+    try {
+      await shipRequests(
+        [created.id],
+        { sourceBranchId: data.sourceBranchId ?? mainStore?.id },
+        viewer,
+      );
+    } catch (error) {
+      await prisma.stockRequest.delete({ where: { id: created.id } });
+      throw error;
+    }
+  }
+
+  return getRequestById(created.id, viewer);
 }
 
 // The Owner sees every request; a seller sees the ones they raised.
@@ -180,7 +211,7 @@ export async function getRequests(
         : {}
       : { requestedById: viewer.userId };
 
-  return prisma.stockRequest.findMany({
+  const rows = await prisma.stockRequest.findMany({
     where: {
       ...scope,
       ...(query.status ? { status: query.status } : {}),
@@ -188,6 +219,8 @@ export async function getRequests(
     select: requestDetail,
     orderBy: { createdAt: "desc" },
   });
+
+  return rows.map(withShipment);
 }
 
 export async function getRequestById(
@@ -208,103 +241,100 @@ export async function getRequestById(
     return null;
   }
 
-  return request;
+  return withShipment(request);
 }
 
 /**
- * Approving is sending: the Owner names the store the goods come from and who
- * is driving them over, and a transfer leaves at once. The goods come off the
- * source store now and reach the requesting store when a seller there presses
- * Received.
+ * Approving is sending: the Owner names the store the goods come from and the
+ * goods leave at once. One request is a lot of one; see shipRequests.
  */
 export async function approveRequest(
   id: string,
   data: ApproveRequestInput,
   viewer: Viewer,
 ) {
-  const request = await prisma.stockRequest.findUnique({
-    where: { id },
+  await shipRequests([id], data, viewer);
+  return getRequestById(id, viewer);
+}
+
+/**
+ * One lot for a store, as on the SIM app: several of its waiting requests go
+ * out together as a single shipment, and a seller there receives them all
+ * with one Received. The goods come off the source store now.
+ *
+ * `items` may lower any line (the store has fewer); a line left out goes as
+ * decided, or in full when it was never decided. 0 declines that line.
+ */
+export async function shipRequests(
+  requestIds: string[],
+  data: ApproveRequestInput,
+  viewer: Viewer,
+) {
+  const ids = [...new Set(requestIds)];
+
+  const requests = await prisma.stockRequest.findMany({
+    where: { id: { in: ids } },
     include: {
       items: true,
       requestedBy: { select: { branchId: true } },
     },
   });
 
-  if (!request) {
+  if (ids.length === 0 || requests.length !== ids.length) {
     throw new Error("REQUEST_NOT_FOUND");
   }
 
-  if (request.status !== "PENDING") {
-    throw new Error("REQUEST_NOT_PENDING");
+  for (const request of requests) {
+    if (request.status !== "PENDING") throw new Error("REQUEST_NOT_PENDING");
+    // Only the person the request was addressed to may decide it.
+    if (request.requestedToId !== viewer.userId) throw new Error("NOT_THE_ADDRESSEE");
+
+    const decided = request.items.some((item) => item.approvedQuantity !== null);
+    if (decided && request.items.some((item) => item.approvedQuantity === null)) {
+      throw new Error("DECIDE_EACH_ITEM");
+    }
   }
 
-  // Only the person the request was addressed to may decide it.
-  if (request.requestedToId !== viewer.userId) {
-    throw new Error("NOT_THE_ADDRESSEE");
-  }
+  // One lot goes to one store.
+  const destinations = new Set(requests.map((request) => request.requestedBy.branchId));
+  if (destinations.size !== 1) throw new Error("ONE_STORE_PER_LOT");
 
-  // Items already decided one by one are shipped as decided.
-  const decidedOneByOne = request.items.some((item) => item.approvedQuantity !== null);
+  const destinationId = [...destinations][0];
+  if (!destinationId) throw new Error("NO_BRANCH");
 
-  if (decidedOneByOne && request.items.some((item) => item.approvedQuantity === null)) {
-    throw new Error("DECIDE_EACH_ITEM");
-  }
-
-  // Decided lines may still be lowered when sending (the store has fewer),
-  // never raised past what was decided.
-  const approved = decidedOneByOne
-    ? resolveApprovedQuantities(
-        request.items.map((item) => ({ id: item.id, quantity: item.approvedQuantity ?? 0 })),
-        data.items,
-      )
-    : resolveApprovedQuantities(request.items, data.items);
-
-  // Lines approved at 0 are declined: they are recorded on the request but
-  // nothing ships for them.
-  const shipping = request.items
-    .map((item) => ({
+  // How much of each line goes, across every request in the lot. Decided
+  // lines may be lowered here, never raised past what was decided.
+  const allItems = requests.flatMap((request) =>
+    request.items.map((item) => ({
+      id: item.id,
       productId: item.productId,
-      quantity: approved.get(item.id) ?? 0,
-    }))
-    .filter((line) => line.quantity > 0);
+      quantity: item.approvedQuantity ?? item.quantity,
+    })),
+  );
+  const approved = resolveApprovedQuantities(allItems, data.items);
 
-  const destinationId = request.requestedBy.branchId;
-
-  if (!destinationId) {
-    throw new Error("NO_BRANCH");
+  // Added up per product: what goes in the lot.
+  const totals = new Map<string, number>();
+  for (const item of allItems) {
+    const quantity = approved.get(item.id) ?? 0;
+    if (quantity > 0) totals.set(item.productId, (totals.get(item.productId) ?? 0) + quantity);
   }
+  const shipping = [...totals].map(([productId, quantity]) => ({ productId, quantity }));
 
-  if (!data.sourceBranchId) {
-    throw new Error("SOURCE_REQUIRED");
-  }
-
+  if (!data.sourceBranchId) throw new Error("SOURCE_REQUIRED");
   const sourceBranchId = data.sourceBranchId;
-
-  if (destinationId === sourceBranchId) {
-    throw new Error("SAME_BRANCH");
-  }
+  if (destinationId === sourceBranchId) throw new Error("SAME_BRANCH");
 
   const source = await prisma.stockLocation.findUnique({
     where: { id: sourceBranchId },
     select: { id: true, isActive: true },
   });
+  if (!source) throw new Error("SOURCE_NOT_FOUND");
+  if (!source.isActive) throw new Error("SOURCE_INACTIVE");
 
-  if (!source) {
-    throw new Error("SOURCE_NOT_FOUND");
-  }
-
-  if (!source.isActive) {
-    throw new Error("SOURCE_INACTIVE");
-  }
-
-  // Refuse to promise stock the source does not have. Checked against what is
-  // being approved, so approving less is how the Owner answers a request the
-  // source cannot fully cover.
-  const available = await shelfStock(
-    sourceBranchId,
-    shipping.map((line) => line.productId),
-  );
-
+  // Refuse to promise stock the source does not have. Sending less is how
+  // the Owner answers a lot the source cannot fully cover.
+  const available = await shelfStock(sourceBranchId, shipping.map((line) => line.productId));
   const shortages = shipping
     .filter((line) => (available.get(line.productId) ?? 0) < line.quantity)
     .map((line) => ({
@@ -320,39 +350,42 @@ export async function approveRequest(
   }
 
   return prisma.$transaction(async (tx) => {
-    await recordApprovedQuantities(tx, approved);
-
-    await tx.stockRequest.update({
-      where: { id },
+    // Claimed first, so a double tap cannot send the same requests twice.
+    const { count } = await tx.stockRequest.updateMany({
+      where: { id: { in: ids }, status: "PENDING" },
       data: {
         status: "APPROVED",
         approvedById: viewer.userId,
         reviewedAt: new Date(),
       },
     });
+    if (count !== ids.length) throw new Error("REQUEST_NOT_PENDING");
+
+    await recordApprovedQuantities(tx, approved);
 
     const transfer = await tx.stockTransfer.create({
       data: {
-        requestId: id,
+        // The first request stands for the lot where one is shown; every
+        // request in it is linked through shipmentId.
+        requestId: ids[0],
         fromLocationId: sourceBranchId,
         toLocationId: destinationId,
         status: "IN_TRANSIT",
         deliveredById: viewer.userId,
         shippedAt: new Date(),
         notes: data.notes ?? null,
-
-        // Who carries it is optional: the Owner just approves.
-
         items: { create: shipping },
       },
     });
 
     await sendOut(tx, transfer.id, sourceBranchId, destinationId, shipping, viewer.userId);
 
-    return tx.stockRequest.findUnique({
-      where: { id },
-      select: requestDetail,
+    await tx.stockRequest.updateMany({
+      where: { id: { in: ids } },
+      data: { shipmentId: transfer.id },
     });
+
+    return { transferId: transfer.id, requests: ids.length, lines: shipping.length };
   });
 }
 

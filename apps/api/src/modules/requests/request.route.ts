@@ -11,6 +11,7 @@ import {
   getRequestsController,
   getRequestController,
   approveRequestController,
+  shipRequestsController,
   rejectRequestController,
   cancelRequestController,
   decideRequestItemsController,
@@ -51,6 +52,16 @@ export async function requestRoutes(app: FastifyInstance) {
       preHandler: [authorize(UserRole.OWNER)],
     },
     approveRequestController,
+  );
+
+  // One lot for a store: several of its requests sent together, as on the
+  // SIM app. A seller there receives them all with one Received.
+  app.post(
+    "/ship",
+    {
+      preHandler: [authorize(UserRole.OWNER)],
+    },
+    shipRequestsController,
   );
 
   // A request may be decided one category at a time: the items sent together.
