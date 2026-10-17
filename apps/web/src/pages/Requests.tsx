@@ -112,13 +112,12 @@ export default function Requests() {
   const { toasts, push, dismiss } = useToasts()
 
   // A request is decided one category at a time by whoever it was sent to.
-  // The Owner goes straight on to sending a restock once its last category
-  // is decided.
+  // Nothing is sent by itself: once every category is decided the row shows
+  // a Send button, and the Owner presses it.
   function onDecided(updated: StockRequest, message: string) {
     push('success', message)
     setReloadKey((n) => n + 1)
     setDetailsOf((current) => (current?.id === updated.id ? updated : current))
-    if (readyToSend(updated, user?.id)) setApproving(updated)
   }
   const PAGE_SIZE = usePageSize()
   const t = useT()
@@ -826,6 +825,19 @@ export default function Requests() {
                           >
                             {t(REQUEST_STATUS_KEY[request.status])}
                           </span>
+                          {/* Decided and waiting: the Owner sends it themselves. */}
+                          {readyToSend(request, user?.id) ? (
+                            <button
+                              type="button"
+                              className={styles.sendBtn}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setApproving(request)
+                              }}
+                            >
+                              {t('appr.send')}
+                            </button>
+                          ) : null}
                           {request.transfer?.receivedAt ? (
                             <em className={styles.statusNote}>
                               {t('req.receivedBy', {
@@ -885,7 +897,7 @@ export default function Requests() {
                                       setOpenMenu(null)
                                     }}
                                   >
-                                    {t('appr.approve')}
+                                    {readyToSend(request, user?.id) ? t('appr.send') : t('appr.approve')}
                                   </button>
                                 ) : null}
 
