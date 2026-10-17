@@ -210,7 +210,7 @@ export default function Products() {
                       <td data-col="product" data-label={t('inv.product')}>
                         <span className={styles.nameLine}>
                           <strong>{product.name}</strong>
-                          {product.type?.name ? <em>· {product.type.name}</em> : null}
+                          {product.type?.name ? <em>{product.type.name}</em> : null}
                         </span>
                       </td>
                       <td data-col="category" data-label={t('prod.category')}>
