@@ -184,6 +184,7 @@ export default function Products() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th scope="col" data-col="type">{t('prod.typeName')}</th>
                   <th scope="col">{t('prod.model')}</th>
                   <th scope="col" data-col="category">{t('prod.category')}</th>
                   {showBrand ? <th scope="col" data-col="brand">{t('prod.brand')}</th> : null}
@@ -207,22 +208,11 @@ export default function Products() {
 
                   return (
                     <tr key={product.id}>
+                      <td data-col="type" data-label={t('prod.typeName')}>
+                        {product.type?.name ?? '—'}
+                      </td>
                       <td data-col="product" data-label={t('prod.model')}>
-                        <span className={styles.productCell}>
-                          <span className={styles.productIcon} data-kind={product.category} aria-hidden="true">
-                            <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              {icons[product.category === 'SERIALIZED' ? 'phone' : 'box'].map((d, index) => (
-                                <path key={index} d={d} />
-                              ))}
-                            </svg>
-                          </span>
-                          <span className={styles.productText}>
-                            <strong>{product.name}</strong>
-                            <em>
-                              {[product.type?.name, product.description].filter(Boolean).join(' · ') || product.sku}
-                            </em>
-                          </span>
-                        </span>
+                        <strong className={styles.strong}>{product.name}</strong>
                       </td>
                       <td data-col="category" data-label={t('prod.category')}>
                         <span className={styles.pill} data-kind={product.category}>
