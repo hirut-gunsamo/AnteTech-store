@@ -572,8 +572,7 @@ export default function Inventory() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th scope="col">{t('prod.typeName')}</th>
-                    {sortHead('name', t('prod.model'))}
+                    {sortHead('name', t('inv.product'))}
                     <th scope="col">{t('inv.category')}</th>
                     {sortHead('qty', t('inv.onShelf'))}
                     <th scope="col">{t('common.status')}</th>
@@ -602,17 +601,16 @@ export default function Inventory() {
                         key={row.id}
                         // Read by the phone layout's ::after to rebuild the
                         // "Store · N in stock" line without extra markup.
-                        data-meta={[row.product.type?.name, t('inv.nInStock', { n: count(row.quantity) })].filter(Boolean).join(' · ')}
+                        data-meta={t('inv.nInStock', { n: count(row.quantity) })}
                         data-state={state}
                         className={styles.clickableRow}
                         onClick={() => setDetailsOf(row)}
                       >
-                        <td data-col="type" data-label={t('prod.typeName')}>
-                          {row.product.type?.name ?? '—'}
-                        </td>
-
-                        <td data-col="product" data-label={t('prod.model')}>
-                          <strong className={styles.strong}>{row.product.name}</strong>
+                        <td data-col="product" data-label={t('inv.product')}>
+                          <span className={styles.nameLine}>
+                            <strong>{row.product.name}</strong>
+                            {row.product.type?.name ? <em>· {row.product.type.name}</em> : null}
+                          </span>
                         </td>
 
                         <td data-col="category" data-label={t('inv.category')}>

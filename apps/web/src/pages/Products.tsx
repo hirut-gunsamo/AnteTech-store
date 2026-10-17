@@ -184,8 +184,7 @@ export default function Products() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th scope="col" data-col="type">{t('prod.typeName')}</th>
-                  <th scope="col">{t('prod.model')}</th>
+                  <th scope="col">{t('inv.product')}</th>
                   <th scope="col" data-col="category">{t('prod.category')}</th>
                   {showBrand ? <th scope="col" data-col="brand">{t('prod.brand')}</th> : null}
                   <th scope="col" data-col="price" className={styles.num}>{t('prod.priceShort')}</th>
@@ -208,11 +207,11 @@ export default function Products() {
 
                   return (
                     <tr key={product.id}>
-                      <td data-col="type" data-label={t('prod.typeName')}>
-                        {product.type?.name ?? '—'}
-                      </td>
-                      <td data-col="product" data-label={t('prod.model')}>
-                        <strong className={styles.strong}>{product.name}</strong>
+                      <td data-col="product" data-label={t('inv.product')}>
+                        <span className={styles.nameLine}>
+                          <strong>{product.name}</strong>
+                          {product.type?.name ? <em>· {product.type.name}</em> : null}
+                        </span>
                       </td>
                       <td data-col="category" data-label={t('prod.category')}>
                         <span className={styles.pill} data-kind={product.category}>
