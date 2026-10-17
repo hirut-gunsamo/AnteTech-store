@@ -77,6 +77,8 @@ function Icon({
   )
 }
 
+type SortKey = 'name' | 'qty' | 'price' | 'value'
+
 function movementTag(move: StockMovement): 'ITEMS_OUT' | 'DAMAGED' | 'LOST' | null {
   const text = move.notes ?? ''
   const match = text.match(/^\[(ITEMS_OUT|DAMAGED|LOST|CORRECTION)\]/)
@@ -118,8 +120,9 @@ export default function Inventory() {
   }, [])
   const [status, setStatus] = useState<StockStatus | 'ALL'>('ALL')
   const [page, setPage] = useState(1)
+  // Click a column head to sort by it; click again to turn it round.
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'name', dir: 1 })
 
-  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [detailsOf, setDetailsOf] = useState<InventoryBalance | null>(null)
   const [editOf, setEditOf] = useState<InventoryBalance | null>(null)
@@ -250,9 +253,59 @@ export default function Inventory() {
     })
   }, [items, tab, store, status, search, serialMatches])
 
+  const sorted = useMemo(() => {
+    const valueOf = (item: InventoryBalance) => {
+      switch (sort.key) {
+        case 'qty':
+          return item.quantity
+        case 'price':
+          return Number(item.product.price ?? 0)
+        case 'value':
+          return item.quantity * Number(item.product.price ?? 0)
+        default:
+          return 0
+      }
+    }
+
+    return [...filtered].sort((a, b) =>
+      sort.key === 'name'
+        ? sort.dir * a.product.name.localeCompare(b.product.name, undefined, { numeric: true })
+        : sort.dir * (valueOf(a) - valueOf(b)) ||
+          a.product.name.localeCompare(b.product.name, undefined, { numeric: true }),
+    )
+  }, [filtered, sort])
+
+  function sortBy(key: SortKey) {
+    setSort((current) =>
+      current.key === key
+        ? { key, dir: current.dir === 1 ? -1 : 1 }
+        // Numbers start biggest first; names start A to Z.
+        : { key, dir: key === 'name' ? 1 : -1 },
+    )
+    setPage(1)
+  }
+
+  // Each store with what it holds, for the store cards: the Main Store
+  // first, then the selling stores in order.
+  const storeCards = useMemo(
+    () =>
+      branches.map(([id, name]) => {
+        const rows = items.filter((item) => item.location.id === id)
+        return {
+          id,
+          name,
+          isMain: id === mainId,
+          units: rows.reduce((sum, item) => sum + item.quantity, 0),
+          products: rows.length,
+          low: rows.filter((item) => stockStatus(item.product.category, item.quantity) !== 'IN_STOCK').length,
+        }
+      }),
+    [branches, items, mainId],
+  )
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
-  const pageRows = filtered.slice(
+  const pageRows = sorted.slice(
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   )
@@ -289,35 +342,12 @@ export default function Inventory() {
     setPage(1)
   }
 
-  function toggleRow(id: string) {
-    setSelected((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const pageAllSelected =
-    pageRows.length > 0 && pageRows.every((row) => selected.has(row.id))
-
-  function togglePage() {
-    setSelected((current) => {
-      const next = new Set(current)
-      if (pageAllSelected) for (const row of pageRows) next.delete(row.id)
-      else for (const row of pageRows) next.add(row.id)
-      return next
-    })
-  }
-
-  // Export what is on screen, or just the ticked rows when there are any.
+  // Export what is on screen.
   const exportName = `inventory-${new Date().toISOString().slice(0, 10)}.csv`
-  const exportRows = selected.size > 0 ? selected.size : filtered.length
+  const exportRows = sorted.length
 
   function exportCsv() {
-    const rows = selected.size > 0
-      ? filtered.filter((row) => selected.has(row.id))
-      : filtered
+    const rows = sorted
 
     const header = [
       'Product',
@@ -429,6 +459,29 @@ export default function Inventory() {
     },
   ]
 
+  // The biggest shelf on screen sets the length of every stock bar.
+  const maxQty = Math.max(1, ...filtered.map((item) => item.quantity))
+  const stockValue = filtered.reduce(
+    (sum, item) => sum + item.quantity * Number(item.product.price ?? 0),
+    0,
+  )
+
+  // A column head that sorts: an arrow shows which way, only on the active one.
+  const sortHead = (key: SortKey, label: string, numeric = false) => (
+    <th
+      scope="col"
+      className={numeric ? styles.num : undefined}
+      aria-sort={sort.key === key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
+    >
+      <button type="button" className={styles.sortBtn} data-on={sort.key === key ? '' : undefined} onClick={() => sortBy(key)}>
+        {label}
+        <span className={styles.sortArrow} aria-hidden="true">
+          {sort.key === key ? (sort.dir === 1 ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  )
+
   const scopedMovements = movements.filter((move) => {
     if (store === 'ALL') return true
     return move.fromLocation?.id === store || move.toLocation?.id === store
@@ -459,24 +512,6 @@ export default function Inventory() {
         </div>
 
         <div className={styles.headActions}>
-          {/* Everyone below the Owner sees one branch — their own — so a
-              picker offering "All branches" and that same branch would be
-              two names for one list. */}
-          {isOwner ? (
-            <select
-              className={styles.select}
-              value={store}
-              onChange={(event) => applyBranch(event.target.value)}
-              aria-label={t("inv.branchLabel")}
-            >
-              {branches.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          ) : null}
-
           {isOwner ? (
             <button
               className={styles.primary}
@@ -489,6 +524,45 @@ export default function Inventory() {
           ) : null}
         </div>
       </header>
+
+      {/* One store at a time: the Main Store first, then Store 1, Store 2.
+          A seller only ever sees their own store, so no cards for them. */}
+      {isOwner && storeCards.length > 0 ? (
+        <div className={styles.stores} role="tablist" aria-label={t('inv.branchLabel')}>
+          {storeCards.map((card) => (
+            <button
+              key={card.id}
+              type="button"
+              role="tab"
+              aria-selected={store === card.id}
+              className={styles.storeCard}
+              data-active={store === card.id ? '' : undefined}
+              data-main={card.isMain ? '' : undefined}
+              onClick={() => applyBranch(card.id)}
+            >
+              <span className={styles.storeIcon}>
+                <Icon name={card.isMain ? 'box' : 'branch'} size={18} />
+              </span>
+              <span className={styles.storeText}>
+                <span className={styles.storeName}>
+                  {card.name}
+                  {card.isMain ? <em className={styles.mainBadge}>{t('inv.mainBadge')}</em> : null}
+                </span>
+                <span className={styles.storeMeta}>
+                  <strong className="tabular">{count(card.units)}</strong> {t('inv.unitsWord')}
+                  {' · '}
+                  {t('inv.nProducts', { n: count(card.products) })}
+                </span>
+              </span>
+              {card.low > 0 ? (
+                <span className={styles.storeLow} title={t('inv.lowStock')}>
+                  {count(card.low)}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className={styles.tiles}>
         {stat.map((tile) => (
@@ -527,6 +601,11 @@ export default function Inventory() {
                 onClick={() => applyTab(option.value)}
               >
                 {t(option.labelKey)}
+                <span className={styles.tabCount}>
+                  {count(
+                    shown.filter((item) => option.value === 'ALL' || item.product.category === option.value).length,
+                  )}
+                </span>
               </button>
             ))}
           </div>
@@ -536,14 +615,10 @@ export default function Inventory() {
             note={`${exportRows} row${exportRows === 1 ? '' : 's'}`}
             onConfirm={exportCsv}
             className={styles.ghost}
-            title={
-              selected.size > 0
-                ? `Export ${selected.size} selected`
-                : 'Export what is on screen'
-            }
+            title="Export what is on screen"
           >
             <Icon name="download" size={15} />
-            Export{selected.size > 0 ? ` (${selected.size})` : ''}
+            Export
           </DownloadButton>
         </div>
 
@@ -585,21 +660,6 @@ export default function Inventory() {
             <option value="QUANTITY">{t('kind.QUANTITY')}</option>
           </select>
 
-          {isOwner ? (
-            <select
-              className={styles.select}
-              value={store}
-              onChange={(event) => applyBranch(event.target.value)}
-              aria-label={t("inv.branchFilter")}
-            >
-              {branches.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          ) : null}
-
           <select
             className={styles.select}
             value={status}
@@ -637,20 +697,12 @@ export default function Inventory() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th className={styles.tick}>
-                      <input
-                        type="checkbox"
-                        checked={pageAllSelected}
-                        onChange={togglePage}
-                        aria-label={t("common.selectAll")}
-                      />
-                    </th>
-                    <th scope="col">{t('inv.product')}</th>
+                    {sortHead('name', t('inv.product'))}
                     <th scope="col">{t('inv.category')}</th>
-                    <th scope="col">{t('common.branch')}</th>
-                    <th scope="col">{t('inv.onShelf')}</th>
+                    {sortHead('qty', t('inv.onShelf'))}
                     <th scope="col">{t('common.status')}</th>
-                    <th scope="col">{t('inv.price')}</th>
+                    {sortHead('price', t('inv.price'), true)}
+                    {sortHead('value', t('inv.stockValue'), true)}
                     <th scope="col" className={styles.actionsCol}>
                       {t('common.actions')}
                     </th>
@@ -674,28 +726,24 @@ export default function Inventory() {
                         key={row.id}
                         // Read by the phone layout's ::after to rebuild the
                         // "Store · N in stock" line without extra markup.
-                        data-meta={`${row.location.name} · ${t('inv.nInStock', { n: count(row.quantity) })}`}
+                        data-meta={`${row.product.sku} · ${t('inv.nInStock', { n: count(row.quantity) })}`}
+                        data-state={state}
                         className={styles.clickableRow}
                         onClick={() => setDetailsOf(row)}
                       >
-                        <td
-                          className={styles.tick}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.has(row.id)}
-                            onChange={() => toggleRow(row.id)}
-                            aria-label={t('a11y.selectRow', { name: row.product.name })}
-                          />
+                        <td data-col="product" data-label={t('inv.product')}>
+                          <span className={styles.productCell}>
+                            <span className={styles.skuIcon} data-category={row.product.category} aria-hidden="true">
+                              <Icon name={row.product.category === 'SERIALIZED' ? 'phone' : 'box'} size={13} />
+                            </span>
+                            <span className={styles.productText}>
+                              <strong>{row.product.name}</strong>
+                              <em>{row.product.sku}</em>
+                            </span>
+                          </span>
                         </td>
 
-
-                        <td data-label={t('inv.product')} className={styles.strong}>
-                          {row.product.name}
-                        </td>
-
-                        <td data-label={t('inv.category')}>
+                        <td data-col="category" data-label={t('inv.category')}>
                           <span
                             className={styles.pill}
                             data-category={row.product.category}
@@ -707,13 +755,16 @@ export default function Inventory() {
                           </span>
                         </td>
 
-                        <td data-label={t('common.branch')}>{row.location.name}</td>
-
-                        <td data-label={t('inv.onShelf')} className="tabular">
-                          {count(row.quantity)}
+                        <td data-col="qty" data-label={t('inv.onShelf')}>
+                          <span className={styles.qtyCell}>
+                            <strong className="tabular">{count(row.quantity)}</strong>
+                            <span className={styles.bar} data-state={state} aria-hidden="true">
+                              <span style={{ width: `${Math.max(4, (row.quantity / maxQty) * 100)}%` }} />
+                            </span>
+                          </span>
                         </td>
 
-                        <td data-label={t('common.status')}>
+                        <td data-col="status" data-label={t('common.status')}>
                           <span className={styles.status} data-state={state}>
                             {t(
                               STATUS_FILTERS.find((s) => s.value === state)
@@ -722,8 +773,12 @@ export default function Inventory() {
                           </span>
                         </td>
 
-                        <td data-label={t('inv.price')} className="tabular">
+                        <td data-col="price" data-label={t('inv.price')} className={`${styles.num} tabular`}>
                           {currency(Number(row.product.price ?? 0))}
+                        </td>
+
+                        <td data-col="value" data-label={t('inv.stockValue')} className={`${styles.num} ${styles.valueCell} tabular`}>
+                          {currency(row.quantity * Number(row.product.price ?? 0))}
                         </td>
 
                         <td
@@ -808,7 +863,10 @@ export default function Inventory() {
                 Showing {(safePage - 1) * PAGE_SIZE + 1}–
                 {Math.min(safePage * PAGE_SIZE, filtered.length)} of{' '}
                 {count(filtered.length)} items
-                {selected.size > 0 ? ` · ${selected.size} selected` : ''}
+              </span>
+
+              <span className={styles.footValue}>
+                {t('inv.stockValue')}: <strong className="tabular">{currency(stockValue)}</strong>
               </span>
 
               {totalPages > 1 ? (
@@ -972,7 +1030,6 @@ export default function Inventory() {
           onClose={() => setDeleteOf(null)}
           onDone={(message) => {
             setDeleteOf(null)
-            setSelected(new Set())
             setReloadKey((n) => n + 1)
             push('success', message)
           }}

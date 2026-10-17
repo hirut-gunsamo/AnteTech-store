@@ -693,22 +693,23 @@
    go under. Letting the two text columns wrap removes that floor, so the
    table fits instead of overflowing. */
 @media (max-width: 1240px) and (min-width: 721px) {
-  .table td[data-label='Product'],
-  .table td[data-label='Store'] {
+  .table td[data-col='product'] {
     white-space: normal;
   }
 }
 
-@media (max-width: 1240px) and (min-width: 721px) {
-  .table th:nth-child(1),
-  .table td:nth-child(1) {
+/* Category goes first (the row's icon already tells phone from accessory),
+   then the price (the value column still shows what the shelf is worth). */
+@media (max-width: 1080px) and (min-width: 721px) {
+  .table th:nth-child(2),
+  .table td:nth-child(2) {
     display: none;
   }
 }
 
-@media (max-width: 1080px) and (min-width: 721px) {
-  .table th:nth-child(3),
-  .table td:nth-child(3) {
+@media (max-width: 900px) and (min-width: 721px) {
+  .table th:nth-child(5),
+  .table td:nth-child(5) {
     display: none;
   }
 }
@@ -761,7 +762,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto 30px;
     grid-template-areas:
-      'name price act'
+      'name value act'
       'meta status act';
     align-items: center;
     column-gap: 11px;
@@ -786,33 +787,58 @@
 
   /* Only the cells that earn their place on a phone are shown; the rest fold
      into the meta line or the details panel. */
-  .table td[data-label='Category'],
-  .table td[data-label='Store'],
-  .table td[data-label='Quantity'] {
+  .table td[data-col='category'],
+  .table td[data-col='qty'],
+  .table td[data-col='price'] {
     display: none;
   }
 
-  .table td[data-label='Product'] {
+  .table td[data-col='product'] {
     grid-area: name;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
     overflow: hidden;
-    text-overflow: ellipsis;
   }
 
-  .table td[data-label='Price'] {
-    grid-area: price;
+  .productText em {
+    display: none;
+  }
+
+  .table td[data-col='value'] {
+    grid-area: value;
     font-size: 13.5px;
-    font-weight: 700;
-    color: var(--text);
     text-align: right;
     white-space: nowrap;
   }
 
-  .table td[data-label='Status'] {
+  .table td[data-col='status'] {
     grid-area: status;
     text-align: right;
+  }
+
+  /* The card's left edge carries the stock colour the bar shows on desktop. */
+  .table tbody tr[data-state='LOW_STOCK'] {
+    border-left: 3px solid var(--warning);
+  }
+
+  .table tbody tr[data-state='OUT_OF_STOCK'] {
+    border-left: 3px solid var(--danger);
+  }
+
+  .stores {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin: 0 -16px;
+    padding: 2px 16px 4px;
+  }
+
+  .stores::-webkit-scrollbar {
+    display: none;
+  }
+
+  .storeCard {
+    flex: 0 0 78%;
+    scroll-snap-align: start;
   }
 
   /* Rebuild the "SKU · Branch · N in stock" line the mockup shows, from the
@@ -828,8 +854,9 @@
     min-width: 0;
   }
 
-  .tick {
-    display: none;
+  .foot {
+    flex-direction: column;
+    gap: 8px;
   }
 
   /* The dots keep their own column on the card's right edge, so they stay
@@ -995,5 +1022,301 @@
 @media (max-width: 720px) {
   .clickableRow:active {
     background: var(--surface-2);
+  }
+}
+
+/* ---------- Stores: Main Store first, then Store 1, Store 2 ---------- */
+
+.stores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.storeCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.storeCard:hover {
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+
+.storeCard[data-active] {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.storeCard:focus-visible {
+  outline: 2px solid var(--brand-dark);
+  outline-offset: 2px;
+}
+
+.storeIcon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.storeCard[data-active] .storeIcon {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+.storeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.storeName {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mainBadge {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--brand-subtle);
+  color: var(--brand-text);
+}
+
+.storeMeta {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.storeMeta strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.storeLow {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--warning-subtle);
+  color: #a87a00;
+  font-size: 11.5px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ---------- Table extras ---------- */
+
+.tabCount {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tabActive .tabCount {
+  background: var(--brand-subtle);
+  color: var(--brand-text);
+}
+
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.sortBtn:hover,
+.sortBtn[data-on] {
+  color: var(--text);
+}
+
+.sortBtn:focus-visible {
+  outline: 2px solid var(--brand-dark);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.sortArrow {
+  font-size: 9px;
+  opacity: 0.45;
+}
+
+.sortBtn[data-on] .sortArrow {
+  opacity: 1;
+  color: var(--brand-text);
+}
+
+.num {
+  text-align: right !important;
+}
+
+.num .sortBtn {
+  flex-direction: row-reverse;
+}
+
+.table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.table tbody tr:hover td {
+  background: color-mix(in srgb, var(--brand) 6%, var(--surface));
+}
+
+.table tbody tr:hover td:first-child {
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.productCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.productCell .skuIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.productText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.productText strong {
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.productText em {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.qtyCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qtyCell strong {
+  min-width: 28px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.bar {
+  flex: 1;
+  min-width: 50px;
+  max-width: 120px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--success);
+  transition: width 0.3s ease;
+}
+
+.bar[data-state='LOW_STOCK'] span {
+  background: var(--warning);
+}
+
+.bar[data-state='OUT_OF_STOCK'] span {
+  background: var(--danger);
+}
+
+.valueCell {
+  color: var(--text) !important;
+  font-weight: 700;
+}
+
+.footValue {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.footValue strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .storeCard,
+  .bar span,
+  .table tbody tr {
+    transition: none;
+  }
+
+  .storeCard:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .table tbody tr:hover td {
+    background: none;
+  }
+
+  .table tbody tr:hover td:first-child {
+    box-shadow: none;
   }
 }

@@ -331,6 +331,10 @@ export const en = {
   'inv.statusFilter': 'Status filter',
   'inv.categoryLabel': 'Category',
   'inv.branchLabel': 'Store',
+  'inv.mainBadge': 'Main',
+  'inv.unitsWord': 'units',
+  'inv.nProducts': '{n} products',
+  'inv.stockValue': 'Stock value',
 
   // Sales
   'sales.title': 'Sales',
@@ -1752,6 +1756,10 @@ export const am: Record<TranslationKey, string> = {
   'inv.statusFilter': 'የሁኔታ ማጣሪያ',
   'inv.categoryLabel': 'ምድብ',
   'inv.branchLabel': 'መደብር',
+  'inv.mainBadge': 'ዋና',
+  'inv.unitsWord': 'ዕቃዎች',
+  'inv.nProducts': '{n} ምርቶች',
+  'inv.stockValue': 'የክምችት ዋጋ',
 
   'sales.title': 'ሽያጭ',
   'sales.newSale': 'አዲስ ሽያጭ',
