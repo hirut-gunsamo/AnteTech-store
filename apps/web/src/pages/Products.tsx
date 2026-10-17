@@ -99,10 +99,18 @@ export default function Products() {
   const heldOf = (product: ProductRow) =>
     product.inventoryBalances.reduce((sum, balance) => sum + balance.quantity, 0)
 
+  const priceOf = (product: ProductRow) => (product.price == null ? null : Number(product.price))
+  const costOf = (product: ProductRow) => (product.costPrice == null ? null : Number(product.costPrice))
+
   const totals = {
     all: (products ?? []).length,
     units: (products ?? []).reduce((sum, product) => sum + heldOf(product), 0),
+    value: (products ?? []).reduce((sum, product) => sum + heldOf(product) * (priceOf(product) ?? 0), 0),
   }
+
+  // How many products each tab holds, so a tab says what is behind it.
+  const tabCount = (value: string) =>
+    (products ?? []).filter((product) => value === 'ALL' || product.categoryId === value).length
 
   return (
     <div className={styles.page}>
@@ -126,13 +134,17 @@ export default function Products() {
       </header>
 
       <div className={styles.totals}>
-        <div>
-          <strong className="tabular">{count(totals.all)}</strong>
+        <div data-tone="blue">
           <span>{t('prod.totalProducts')}</span>
+          <strong className="tabular">{count(totals.all)}</strong>
         </div>
-        <div>
-          <strong className="tabular">{count(totals.units)}</strong>
+        <div data-tone="green">
           <span>{t('prod.totalUnits')}</span>
+          <strong className="tabular">{count(totals.units)}</strong>
+        </div>
+        <div data-tone="amber">
+          <span>{t('inv.stockValue')}</span>
+          <strong className="tabular">{currency(totals.value)}</strong>
         </div>
       </div>
 
@@ -153,6 +165,7 @@ export default function Products() {
                 onClick={() => setCategory(option.value)}
               >
                 {option.label}
+                <span className={styles.tabCount}>{count(tabCount(option.value))}</span>
               </button>
             ))}
           </div>
@@ -171,13 +184,13 @@ export default function Products() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th scope="col">{t('prod.category')}</th>
-                  <th scope="col">{t('prod.typeName')}</th>
                   <th scope="col">{t('prod.model')}</th>
-                  {showBrand ? <th scope="col">{t('prod.brand')}</th> : null}
-                  <th scope="col">{t('prod.price')}</th>
-                  <th scope="col">{t('prod.costPrice')}</th>
-                  <th scope="col">{t('prod.inStock')}</th>
+                  <th scope="col" data-col="category">{t('prod.category')}</th>
+                  {showBrand ? <th scope="col" data-col="brand">{t('prod.brand')}</th> : null}
+                  <th scope="col" data-col="price" className={styles.num}>{t('prod.priceShort')}</th>
+                  <th scope="col" data-col="cost" className={styles.num}>{t('prod.costPrice')}</th>
+                  <th scope="col" data-col="margin" className={styles.num}>{t('prod.margin')}</th>
+                  <th scope="col" data-col="stock" className={styles.num}>{t('prod.inStock')}</th>
                   {isOwner ? (
                     <th scope="col" className={styles.actionsCol}>
                       {t('common.actions')}
@@ -188,32 +201,59 @@ export default function Products() {
               <tbody>
                 {rows.map((product) => {
                   const held = heldOf(product)
+                  const price = priceOf(product)
+                  const cost = costOf(product)
+                  const margin = price != null && cost != null ? price - cost : null
 
                   return (
                     <tr key={product.id}>
-                      <td data-label={t('prod.category')}>
-                        {product.productCategory?.name ?? '—'}
+                      <td data-col="product" data-label={t('prod.model')}>
+                        <span className={styles.productCell}>
+                          <span className={styles.productIcon} data-kind={product.category} aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              {icons[product.category === 'SERIALIZED' ? 'phone' : 'box'].map((d, index) => (
+                                <path key={index} d={d} />
+                              ))}
+                            </svg>
+                          </span>
+                          <span className={styles.productText}>
+                            <strong>{product.name}</strong>
+                            <em>
+                              {[product.type?.name, product.description].filter(Boolean).join(' · ') || product.sku}
+                            </em>
+                          </span>
+                        </span>
                       </td>
-                      <td data-label={t('prod.typeName')}>{product.type?.name ?? '—'}</td>
-                      <td data-label={t('prod.model')} className={styles.strong}>
-                        {product.name}
-                        {product.description ? (
-                          <em className={styles.sub}>{product.description}</em>
-                        ) : null}
+                      <td data-col="category" data-label={t('prod.category')}>
+                        <span className={styles.pill} data-kind={product.category}>
+                          {product.productCategory?.name ?? '—'}
+                        </span>
                       </td>
                       {showBrand ? (
-                        <td data-label={t('prod.brand')}>
+                        <td data-col="brand" data-label={t('prod.brand')}>
                           {product.category === 'SERIALIZED' ? product.phoneDetails?.brand || '—' : '—'}
                         </td>
                       ) : null}
-                      <td data-label={t('prod.price')} className="tabular">
-                        {product.price == null ? '—' : currency(Number(product.price))}
+                      <td data-col="price" data-label={t('prod.priceShort')} className={`${styles.num} ${styles.price} tabular`}>
+                        {price == null ? '—' : currency(price)}
                       </td>
-                      <td data-label={t('prod.costPrice')} className="tabular">
-                        {product.costPrice == null ? '—' : currency(Number(product.costPrice))}
+                      <td data-col="cost" data-label={t('prod.costPrice')} className={`${styles.num} tabular`}>
+                        {cost == null ? '—' : currency(cost)}
                       </td>
-                      <td data-label={t('prod.inStock')} className="tabular">
-                        {count(held)}
+                      <td data-col="margin" data-label={t('prod.margin')} className={`${styles.num} tabular`}>
+                        {margin == null ? (
+                          '—'
+                        ) : (
+                          <span className={styles.margin} data-bad={margin < 0 ? '' : undefined}>
+                            {margin > 0 ? '+' : ''}
+                            {currency(margin)}
+                          </span>
+                        )}
+                      </td>
+                      <td data-col="stock" data-label={t('prod.inStock')} className={styles.num}>
+                        <span className={`${styles.stock} tabular`} data-empty={held === 0 ? '' : undefined}>
+                          {count(held)}
+                        </span>
                       </td>
                       {isOwner ? (
                         <td className={styles.actionsCol}>
