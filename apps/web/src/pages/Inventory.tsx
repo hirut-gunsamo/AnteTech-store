@@ -28,14 +28,6 @@ import type {
 } from '../lib/types'
 import styles from './Inventory.module.css'
 
-const TABS = [
-  { value: 'ALL', labelKey: 'inv.tabAll' },
-  { value: 'SERIALIZED', labelKey: 'kind.SERIALIZED' },
-  { value: 'QUANTITY', labelKey: 'kind.QUANTITY' },
-] as const satisfies readonly { value: string; labelKey: TranslationKey }[]
-
-type TabValue = (typeof TABS)[number]['value']
-
 const CATEGORY_PILL: Record<string, TranslationKey> = {
   SERIALIZED: 'kind.SERIALIZED',
   QUANTITY: 'kind.QUANTITY',
@@ -104,7 +96,6 @@ export default function Inventory() {
   const [reloadKey, setReloadKey] = useState(0)
 
   // Filters
-  const [tab, setTab] = useState<TabValue>('ALL')
   const [search, setSearch] = useState('')
   // The Owner looks at one store at a time, the Main Store first; '' means
   // "not picked yet", which falls back to the Main Store below.
@@ -118,7 +109,6 @@ export default function Inventory() {
       .catch(() => {})
     return () => controller.abort()
   }, [])
-  const [status, setStatus] = useState<StockStatus | 'ALL'>('ALL')
   const [page, setPage] = useState(1)
   // Click a column head to sort by it; click again to turn it round.
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'name', dir: 1 })
@@ -229,14 +219,7 @@ export default function Inventory() {
     const term = search.trim().toLowerCase()
 
     return items.filter((item) => {
-      if (tab !== 'ALL' && item.product.category !== tab) return false
       if (store !== 'ALL' && item.location.id !== store) return false
-
-      if (status !== 'ALL') {
-        if (stockStatus(item.product.category, item.quantity) !== status) {
-          return false
-        }
-      }
 
       if (term) {
         const textHit =
@@ -251,7 +234,7 @@ export default function Inventory() {
 
       return true
     })
-  }, [items, tab, store, status, search, serialMatches])
+  }, [items, store, search, serialMatches])
 
   const sorted = useMemo(() => {
     const valueOf = (item: InventoryBalance) => {
@@ -310,16 +293,8 @@ export default function Inventory() {
     safePage * PAGE_SIZE,
   )
 
-  const filtersOn =
-    tab !== 'ALL' || status !== 'ALL' || search !== ''
-
   // Changing any filter returns you to page one, otherwise a narrower result
   // set would leave you stranded on a page that no longer exists.
-  function applyTab(value: TabValue) {
-    setTab(value)
-    setPage(1)
-  }
-
   function applySearch(value: string) {
     setSearch(value)
     setPage(1)
@@ -327,18 +302,6 @@ export default function Inventory() {
 
   function applyBranch(value: string) {
     setBranch(value)
-    setPage(1)
-  }
-
-  function applyStatus(value: StockStatus | 'ALL') {
-    setStatus(value)
-    setPage(1)
-  }
-
-  function resetFilters() {
-    setTab('ALL')
-    setSearch('')
-    setStatus('ALL')
     setPage(1)
   }
 
@@ -525,45 +488,6 @@ export default function Inventory() {
         </div>
       </header>
 
-      {/* One store at a time: the Main Store first, then Store 1, Store 2.
-          A seller only ever sees their own store, so no cards for them. */}
-      {isOwner && storeCards.length > 0 ? (
-        <div className={styles.stores} role="tablist" aria-label={t('inv.branchLabel')}>
-          {storeCards.map((card) => (
-            <button
-              key={card.id}
-              type="button"
-              role="tab"
-              aria-selected={store === card.id}
-              className={styles.storeCard}
-              data-active={store === card.id ? '' : undefined}
-              data-main={card.isMain ? '' : undefined}
-              onClick={() => applyBranch(card.id)}
-            >
-              <span className={styles.storeIcon}>
-                <Icon name={card.isMain ? 'box' : 'branch'} size={18} />
-              </span>
-              <span className={styles.storeText}>
-                <span className={styles.storeName}>
-                  {card.name}
-                  {card.isMain ? <em className={styles.mainBadge}>{t('inv.mainBadge')}</em> : null}
-                </span>
-                <span className={styles.storeMeta}>
-                  <strong className="tabular">{count(card.units)}</strong> {t('inv.unitsWord')}
-                  {' · '}
-                  {t('inv.nProducts', { n: count(card.products) })}
-                </span>
-              </span>
-              {card.low > 0 ? (
-                <span className={styles.storeLow} title={t('inv.lowStock')}>
-                  {count(card.low)}
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       <div className={styles.tiles}>
         {stat.map((tile) => (
           <div
@@ -585,104 +509,62 @@ export default function Inventory() {
       </div>
 
       <Card>
-        <div className={styles.tabs} role="tablist">
-          <div className={styles.tabList}>
-            {TABS.map((option) => (
+        {/* One line: the stores on the left, Main Store first, then
+            search and export on the right. */}
+        <div className={styles.tabs}>
+          <div className={styles.tabList} role="tablist" aria-label={t('inv.branchLabel')}>
+            {storeCards.map((card) => (
               <button
-                key={option.value}
+                key={card.id}
                 className={
-                  tab === option.value
+                  store === card.id || (!isOwner && storeCards.length === 1)
                     ? `${styles.tab} ${styles.tabActive}`
                     : styles.tab
                 }
                 type="button"
                 role="tab"
-                aria-selected={tab === option.value}
-                onClick={() => applyTab(option.value)}
+                aria-selected={store === card.id}
+                onClick={() => applyBranch(card.id)}
               >
-                {t(option.labelKey)}
-                <span className={styles.tabCount}>
-                  {count(
-                    shown.filter((item) => option.value === 'ALL' || item.product.category === option.value).length,
-                  )}
-                </span>
+                {card.name}
+                <span className={styles.tabCount}>{count(card.products)}</span>
+                {card.low > 0 ? (
+                  <span className={styles.tabLow} title={t('inv.lowStock')}>
+                    {count(card.low)}
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
 
-          <DownloadButton
-            filename={exportName}
-            note={`${exportRows} row${exportRows === 1 ? '' : 's'}`}
-            onConfirm={exportCsv}
-            className={styles.ghost}
-            title="Export what is on screen"
-          >
-            <Icon name="download" size={15} />
-            Export
-          </DownloadButton>
-        </div>
+          <div className={styles.tabTools}>
+            <label className={styles.search}>
+              <span className={styles.searchIcon} aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="m20 20-3.2-3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </span>
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => applySearch(event.target.value)}
+                placeholder={t("inv.searchPlaceholder")}
+                aria-label={t("inv.searchLabel")}
+              />
+            </label>
 
-        <div className={styles.filters}>
-          <label className={styles.search}>
-            <span className={styles.searchIcon} aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none">
-                <circle
-                  cx="11"
-                  cy="11"
-                  r="7"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                />
-                <path
-                  d="m20 20-3.2-3.2"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </span>
-            <input
-              value={search}
-              onChange={(event) => applySearch(event.target.value)}
-              placeholder={t("inv.searchPlaceholder")}
-              aria-label={t("inv.searchLabel")}
-            />
-          </label>
-
-          <select
-            className={styles.select}
-            value={tab}
-            onChange={(event) => applyTab(event.target.value as TabValue)}
-            aria-label={t("inv.categoryLabel")}
-          >
-            <option value="ALL">{t("inv.allCategories")}</option>
-            <option value="SERIALIZED">{t('kind.SERIALIZED')}</option>
-            <option value="QUANTITY">{t('kind.QUANTITY')}</option>
-          </select>
-
-          <select
-            className={styles.select}
-            value={status}
-            onChange={(event) =>
-              applyStatus(event.target.value as StockStatus | 'ALL')
-            }
-            aria-label={t("inv.statusFilter")}
-          >
-            {STATUS_FILTERS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {t(option.labelKey)}
-              </option>
-            ))}
-          </select>
-
-          <button
-            className={styles.reset}
-            type="button"
-            onClick={resetFilters}
-            disabled={!filtersOn}
-          >
-            {t('common.reset')}
-          </button>
+            <DownloadButton
+              filename={exportName}
+              note={`${exportRows} row${exportRows === 1 ? '' : 's'}`}
+              onConfirm={exportCsv}
+              className={styles.ghost}
+              title="Export what is on screen"
+            >
+              <Icon name="download" size={15} />
+              <span className={styles.exportText}>Export</span>
+            </DownloadButton>
+          </div>
         </div>
 
         {filtered.length === 0 ? (
