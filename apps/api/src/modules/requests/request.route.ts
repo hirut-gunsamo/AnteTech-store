@@ -33,11 +33,12 @@ export async function requestRoutes(app: FastifyInstance) {
 
   app.get<{ Params: RequestParams }>("/:id", getRequestController);
 
-  // A seller raises one for their own store.
+  // A seller raises one for their own store; the Owner may send "as a
+  // branch" to a store that did not ask.
   app.post(
     "/",
     {
-      preHandler: [authorize(UserRole.SALES)],
+      preHandler: [authorize(UserRole.OWNER, UserRole.SALES)],
     },
     createRequestController,
   );

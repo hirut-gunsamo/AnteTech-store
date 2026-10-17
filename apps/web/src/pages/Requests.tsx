@@ -105,6 +105,7 @@ export default function Requests() {
   const [detailsOf, setDetailsOf] = useState<StockRequest | null>(null)
   const [approving, setApproving] = useState<StockRequest | null>(null)
   const [creating, setCreating] = useState(false)
+  const [sendingAsBranch, setSendingAsBranch] = useState(false)
   const [pending, setPending] = useState<string | null>(null)
 
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -508,6 +509,18 @@ export default function Requests() {
               {t('req.new')}
             </button>
           ) : null}
+
+          {/* The Owner sends to a store that did not ask. */}
+          {isOwner ? (
+            <button
+              className={styles.primary}
+              type="button"
+              onClick={() => setSendingAsBranch(true)}
+            >
+              <Icon name="plus" size={15} />
+              {t('req.sendAsBranch')}
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -752,7 +765,7 @@ export default function Requests() {
                         </td>
 
                         <td data-label={t('req.requestedBy')}>
-                          {request.requestedBy.name}
+                          {request.sentByOwner ? t('req.sentByOwner') : request.requestedBy.name}
                           <span className={styles.sub}>
                             {request.requestedBy.branch?.name ?? ''}
                           </span>
@@ -999,6 +1012,24 @@ export default function Requests() {
             setApproving(null)
             push('success', message)
             setReloadKey((n) => n + 1)
+          }}
+        />
+      ) : null}
+
+      {sendingAsBranch ? (
+        <NewRequestDialog
+          asBranch
+          onClose={() => setSendingAsBranch(false)}
+          onDone={(message) => {
+            setSendingAsBranch(false)
+            push('success', message)
+            setReloadKey((n) => n + 1)
+          }}
+          onSent={(request) => {
+            // Filed for the store; now the car, exactly as for a request.
+            setSendingAsBranch(false)
+            setReloadKey((n) => n + 1)
+            setApproving(request)
           }}
         />
       ) : null}
