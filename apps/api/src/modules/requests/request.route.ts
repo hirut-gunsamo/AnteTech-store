@@ -12,6 +12,7 @@ import {
   getRequestController,
   approveRequestController,
   shipRequestsController,
+  approveQuantitiesController,
   rejectRequestController,
   cancelRequestController,
   decideRequestItemsController,
@@ -52,6 +53,15 @@ export async function requestRoutes(app: FastifyInstance) {
       preHandler: [authorize(UserRole.OWNER)],
     },
     approveRequestController,
+  );
+
+  // Step one of sending: the Owner saves how many of each item go.
+  app.patch<{ Params: RequestParams }>(
+    "/:id/approve-quantities",
+    {
+      preHandler: [authorize(UserRole.OWNER)],
+    },
+    approveQuantitiesController,
   );
 
   // One lot for a store: several of its requests sent together, as on the

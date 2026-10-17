@@ -19,6 +19,7 @@ import {
   getRequestById,
   approveRequest,
   shipRequests,
+  approveQuantities,
   rejectRequest,
   cancelRequest,
   decideRequestItems,
@@ -295,6 +296,30 @@ export async function approveRequestController(
       message: "Request approved. The goods are on their way to the store.",
       request: approved,
     });
+  } catch (error) {
+    return (
+      handleRequestError(error, reply) ?? Promise.reject(error)
+    );
+  }
+}
+
+// Step one: how many of each item go. The request waits for Send.
+export async function approveQuantitiesController(
+  request: FastifyRequest<{ Params: RequestParams }>,
+  reply: FastifyReply,
+) {
+  const result = approveRequestSchema.pick({ items: true }).safeParse(request.body);
+
+  if (!result.success) {
+    return reply.status(400).send({ message: "Enter how many of each item go" });
+  }
+
+  const viewer = await withViewer(request, reply);
+  if (!viewer) return reply;
+
+  try {
+    const approved = await approveQuantities(request.params.id, result.data.items ?? [], viewer);
+    return reply.send({ message: "Approved. Now send it.", request: approved });
   } catch (error) {
     return (
       handleRequestError(error, reply) ?? Promise.reject(error)
