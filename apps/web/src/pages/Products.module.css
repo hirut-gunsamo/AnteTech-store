@@ -601,12 +601,11 @@
   }
 }
 
-/* Product name, then its type after it on the same line. */
+/* Product name, with its type underneath. */
 .nameLine {
   display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .nameLine strong {

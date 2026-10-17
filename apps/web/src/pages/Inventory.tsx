@@ -609,7 +609,7 @@ export default function Inventory() {
                         <td data-col="product" data-label={t('inv.product')}>
                           <span className={styles.nameLine}>
                             <strong>{row.product.name}</strong>
-                            {row.product.type?.name ? <em>· {row.product.type.name}</em> : null}
+                            {row.product.type?.name ? <em>{row.product.type.name}</em> : null}
                           </span>
                         </td>
 
