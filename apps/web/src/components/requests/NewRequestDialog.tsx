@@ -7,8 +7,6 @@ import { count } from '../../lib/format'
 import type { BranchRow, CatalogueProduct, InventorySummary } from '../../lib/types'
 import styles from '../inventory/Panel.module.css'
 
-// The type (Charger), then the models of that type.
-type Line = { typeId: string; productId: string; quantity: string }
 
 /**
  * A seller asking the Owner to restock their store.
@@ -38,7 +36,9 @@ export function NewRequestDialog({
   const [fromId, setFromId] = useState('')
   const [allStores, setAllStores] = useState<BranchRow[]>([])
   const [onHand, setOnHand] = useState<Map<string, number>>(new Map())
-  const [lines, setLines] = useState<Line[]>([{ typeId: '', productId: '', quantity: '' }])
+  // As on the SIM app: every product with a box against it, grouped by
+  // category. Only the boxes typed into are sent.
+  const [grid, setGrid] = useState<Record<string, string>>({})
   const [note, setNote] = useState('')
 
   const [busy, setBusy] = useState(false)
@@ -123,53 +123,47 @@ export function NewRequestDialog({
     return () => controller.abort()
   }, [asBranch, storeId])
 
-  // Each product with its type, and the ids a type
-  // pick matches on (an older phone filed under a model still shows under
-  // its brand).
-  const entries = useMemo(
-    () =>
-      products
-        .map((entry) => ({
-          id: entry.id,
-          name: entry.name,
-          typeId: entry.type?.parent?.id ?? entry.type?.id ?? '',
-          typeName: entry.type?.parent?.name ?? entry.type?.name ?? '',
-          typeIds: [entry.type?.id, entry.type?.parent?.id].filter((id): id is string => Boolean(id)),
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })),
-    [products],
-  )
+  // Every active product, grouped by its category (Phones, Accessories ...),
+  // A to Z by type and then name inside each.
+  const groups = useMemo(() => {
+    const byCategory = new Map<string, { name: string; products: CatalogueProduct[] }>()
+    for (const product of products) {
+      const key = product.productCategory?.id ?? product.category
+      const name = product.productCategory?.name ?? product.category
+      const group = byCategory.get(key) ?? { name, products: [] }
+      group.products.push(product)
+      byCategory.set(key, group)
+    }
+    const typeOf = (product: CatalogueProduct) => product.type?.parent?.name ?? product.type?.name ?? ''
+    for (const group of byCategory.values()) {
+      group.products.sort(
+        (a, b) =>
+          typeOf(a).localeCompare(typeOf(b)) ||
+          a.name.localeCompare(b.name, undefined, { numeric: true }),
+      )
+    }
+    return [...byCategory.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name))
+  }, [products])
 
-  // Every type, A to Z: Charger, Cover, Glass, Infinix, Speaker ...
-  const typeOptions = [
-    ...new Map(entries.filter((entry) => entry.typeId).map((entry) => [entry.typeId, entry.typeName] as const)),
-  ].sort((a, b) => a[1].localeCompare(b[1]))
+  const typeLabel = (product: CatalogueProduct) =>
+    product.type?.parent?.name ?? product.type?.name ?? ''
 
-  const priced = lines.map((line) => {
-    const product = products.find((entry) => entry.id === line.productId)
-    const qty = Number(line.quantity)
-
+  // What was typed: a whole number, 0 or more. Blank counts as 0.
+  const priced = products.map((product) => {
+    const raw = grid[product.id] ?? ''
+    const qty = raw.trim() === '' ? 0 : Number(raw)
     return {
-      ...line,
       product,
+      productId: product.id,
+      raw,
       qty,
-      valid: product != null && Number.isInteger(qty) && qty > 0,
+      valid: raw.trim() === '' || (Number.isInteger(qty) && qty >= 0),
     }
   })
+  const chosenLines = priced.filter((line) => line.valid && line.qty > 0)
+  const allValid = priced.every((line) => line.valid)
 
-  const totalUnits = priced.reduce(
-    (sum, line) => sum + (line.valid ? line.qty : 0),
-    0,
-  )
-
-  // The same product twice would be two lines the Owner has to reconcile.
-  const chosen = new Set<string>()
-  const duplicated = priced.some((line) => {
-    if (line.productId === '') return false
-    if (chosen.has(line.productId)) return true
-    chosen.add(line.productId)
-    return false
-  })
+  const totalUnits = chosenLines.reduce((sum, line) => sum + line.qty, 0)
 
   const sendFrom = fromId || allStores.find((row) => row.isMainStock)?.id || ''
 
@@ -177,15 +171,8 @@ export function NewRequestDialog({
     !busy &&
     (!asBranch || (sendFrom !== '' && sendFrom !== storeId)) &&
     (!asBranch || storeId !== '') &&
-    priced.length > 0 &&
-    priced.every((l) => l.valid) &&
-    !duplicated
-
-  function setLine(index: number, patch: Partial<Line>) {
-    setLines((current) =>
-      current.map((line, i) => (i === index ? { ...line, ...patch } : line)),
-    )
-  }
+    chosenLines.length > 0 &&
+    allValid
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -194,7 +181,7 @@ export function NewRequestDialog({
     setBusy(true)
     setError(null)
 
-    const items = priced.map((line) => ({
+    const items = chosenLines.map((line) => ({
       productId: line.productId,
       quantity: line.qty,
     }))
@@ -240,13 +227,13 @@ export function NewRequestDialog({
       onDone(
         sent === null
           ? t('sync.savedOffline')
-          : priced.length === 1
+          : chosenLines.length === 1
             ? t('done.requestedOne', {
                 units: t('dlg.units', { n: count(totalUnits) }),
               })
             : t('done.requested', {
                 units: t('dlg.units', { n: count(totalUnits) }),
-                n: priced.length,
+                n: chosenLines.length,
               }),
       )
     } catch (caught) {
@@ -311,99 +298,49 @@ export function NewRequestDialog({
             </label>
           ) : null}
 
-          {priced.map((line, index) => (
-            <div key={index} className={styles.saleLine}>
-              <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
-                <span>
-                  {t('dlg.item', { n: index + 1 })} · {t('prod.typeName')}
-                </span>
-                <select
-                  value={line.typeId}
-                  onChange={(event) => setLine(index, { typeId: event.target.value, productId: '' })}
-                  required
-                >
-                  <option value="">{t('req.chooseType')}</option>
-                  {typeOptions.map(([id, name]) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+          {products.length === 0 ? <p className={styles.none}>{t('common.loading')}</p> : null}
 
-              <label className={styles.field}>
-                <span>{t('prod.model')}</span>
-                <select
-                  value={line.productId}
-                  onChange={(event) => setLine(index, { productId: event.target.value })}
-                  disabled={!line.typeId}
-                  required
-                >
-                  <option value="">{line.typeId ? t('sale.chooseModel') : t('req.typeFirst')}</option>
-                  {line.typeId
-                    ? entries
-                        .filter((entry) => entry.typeIds.includes(line.typeId))
-                        .map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.name} · {t('dlg.onHand', { n: count(onHand.get(entry.id) ?? 0) })}
-                          </option>
-                        ))
-                    : null}
-                </select>
-              </label>
+          {groups.map(([key, group]) => (
+            // Each category folds open and shut, so a long list stays short.
+            <details key={key} className={styles.gridGroup} open>
+              <summary className={styles.gridHead}>{group.name}</summary>
 
-              <label className={styles.qtyField}>
-                <span>{t('dlg.qty')}</span>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={line.quantity}
-                  onChange={(event) =>
-                    setLine(index, { quantity: event.target.value })
-                  }
-                  required
-                />
-              </label>
+              {group.products.map((product) => {
+                const line = priced.find((entry) => entry.productId === product.id)
+                return (
+                  <label key={product.id} className={styles.gridRow}>
+                    <span className={styles.gridName}>
+                      {product.name}
+                      <em className={styles.sub}>
+                        {[typeLabel(product), t('dlg.onHand', { n: count(onHand.get(product.id) ?? 0) })]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </em>
+                    </span>
 
-              {lines.length > 1 ? (
-                <button
-                  type="button"
-                  className={styles.removeLine}
-                  onClick={() =>
-                    setLines((current) => current.filter((_, i) => i !== index))
-                  }
-                  aria-label={t('a11y.removeItem', { n: index + 1 })}
-                >
-                  ✕
-                </button>
-              ) : null}
-            </div>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      step="1"
+                      value={line?.raw ?? ''}
+                      onChange={(event) =>
+                        setGrid((current) => ({ ...current, [product.id]: event.target.value }))
+                      }
+                      placeholder="0"
+                      aria-label={product.name}
+                      data-bad={line && !line.valid ? '' : undefined}
+                    />
+                  </label>
+                )
+              })}
+            </details>
           ))}
 
-          <button
-            type="button"
-            className={styles.addLine}
-            onClick={() =>
-              setLines((current) => [
-                ...current,
-                { typeId: '', productId: '', quantity: '' },
-              ])
-            }
-          >
-            {t('dlg.addAnother')}
-          </button>
-
-          {duplicated ? (
-            <p className={styles.tally} data-bad="">
-              {t('dlg.duplicateProduct')}
-            </p>
-          ) : totalUnits > 0 ? (
-            <div className={styles.saleTotal}>
-              <span>{t('dlg.totalRequested')}</span>
-              <strong className="tabular">{t('dlg.units', { n: count(totalUnits) })}</strong>
-            </div>
-          ) : null}
+          <div className={styles.saleTotal}>
+            <span>{t('dlg.totalRequested')}</span>
+            <strong className="tabular">{t('dlg.units', { n: count(totalUnits) })}</strong>
+          </div>
 
           <label className={styles.field}>
             <span>{t('dlg.note')}</span>
