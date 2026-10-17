@@ -345,6 +345,10 @@ model StockRequest {
   notes           String?
   rejectionReason String?
 
+  /// The Owner sent this to the store unasked ("Send as a branch"). It is
+  /// filed under a seller of that store so it ships and is received as usual.
+  sentByOwner Boolean @default(false)
+
   submittedAt DateTime  @default(now())
   reviewedAt  DateTime?
   fulfilledAt DateTime?

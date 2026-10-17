@@ -411,6 +411,8 @@ export type StockRequest = {
   status: RequestStatus
   notes: string | null
   rejectionReason: string | null
+  /** The Owner sent it unasked ("Send as a branch"). */
+  sentByOwner?: boolean
   submittedAt: string | null
   reviewedAt: string | null
   fulfilledAt: string | null

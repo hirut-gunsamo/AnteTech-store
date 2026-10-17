@@ -13,6 +13,9 @@ export const createRequestSchema = z.object({
     .min(1, "A request needs at least one item"),
 
   notes: z.string().max(500).optional(),
+
+  // The Owner only: the store this is sent to unasked ("Send as a branch").
+  branchId: z.string().min(1).optional(),
 });
 
 // The Owner approves and names the branch the stock will ship from.

@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import { sendOrQueue } from '../../lib/sync'
 import { useT } from '../../lib/i18n'
 import { count } from '../../lib/format'
-import type { CatalogueProduct, InventorySummary } from '../../lib/types'
+import type { BranchRow, CatalogueProduct, InventorySummary, StockRequest } from '../../lib/types'
 import styles from '../inventory/Panel.module.css'
 
 // The type (Charger), then the models of that type.
@@ -16,16 +16,26 @@ type Line = { typeId: string; productId: string; quantity: string }
  * Each line shows what the store already has, so the request is a decision
  * rather than a guess. The Owner answers by sending goods from the main store
  * or another store.
+ *
+ * With `asBranch` it is the Owner sending to a store that did not ask: they
+ * pick the store, the request is filed for it, and `onSent` hands it back so
+ * the Owner goes straight on to sending it.
  */
 export function NewRequestDialog({
   onClose,
   onDone,
+  asBranch = false,
+  onSent,
 }: {
   onClose: () => void
   onDone: (message: string) => void
+  asBranch?: boolean
+  onSent?: (request: StockRequest) => void
 }) {
   const [products, setProducts] = useState<CatalogueProduct[]>([])
   const t = useT()
+  const [stores, setStores] = useState<BranchRow[]>([])
+  const [storeId, setStoreId] = useState('')
   const [onHand, setOnHand] = useState<Map<string, number>>(new Map())
   const [lines, setLines] = useState<Line[]>([{ typeId: '', productId: '', quantity: '' }])
   const [note, setNote] = useState('')
@@ -47,13 +57,15 @@ export function NewRequestDialog({
 
     async function load() {
       try {
-        const [productRes, stockRes] = await Promise.all([
+        const [productRes, storeRes] = await Promise.all([
           api<{ products: CatalogueProduct[] }>('/api/products', {
             signal: controller.signal,
           }),
-          api<{ summary: InventorySummary }>('/api/inventory/summary', {
-            signal: controller.signal,
-          }),
+          asBranch
+            ? api<{ branches: BranchRow[] }>('/api/branches', {
+                signal: controller.signal,
+              })
+            : Promise.resolve({ branches: [] as BranchRow[] }),
         ])
 
         setProducts(
@@ -62,11 +74,12 @@ export function NewRequestDialog({
           ),
         )
 
-        const held = new Map<string, number>()
-        for (const row of stockRes.summary.items) {
-          held.set(row.productId, (held.get(row.productId) ?? 0) + row.quantity)
-        }
-        setOnHand(held)
+        // Only selling stores: the main store is where the goods come from.
+        setStores(
+          (storeRes.branches ?? []).filter(
+            (row) => row.isActive && !row.isMainStock,
+          ),
+        )
       } catch (caught) {
         if (controller.signal.aborted) return
         setError(
@@ -78,7 +91,34 @@ export function NewRequestDialog({
     void load()
 
     return () => controller.abort()
-  }, [])
+  }, [asBranch])
+
+  // What the store already has: the seller's own, or the store the Owner picked.
+  useEffect(() => {
+    if (asBranch && !storeId) {
+      setOnHand(new Map())
+      return
+    }
+
+    const controller = new AbortController()
+    const query = asBranch ? `?locationId=${encodeURIComponent(storeId)}` : ''
+
+    api<{ summary: InventorySummary }>(`/api/inventory/summary${query}`, {
+      signal: controller.signal,
+    })
+      .then((stockRes) => {
+        const held = new Map<string, number>()
+        for (const row of stockRes.summary.items) {
+          held.set(row.productId, (held.get(row.productId) ?? 0) + row.quantity)
+        }
+        setOnHand(held)
+      })
+      .catch(() => {
+        // The on-hand hint is a help, not a requirement.
+      })
+
+    return () => controller.abort()
+  }, [asBranch, storeId])
 
   // Each product with its type, and the ids a type
   // pick matches on (an older phone filed under a model still shows under
@@ -129,7 +169,11 @@ export function NewRequestDialog({
   })
 
   const canSubmit =
-    !busy && priced.length > 0 && priced.every((l) => l.valid) && !duplicated
+    !busy &&
+    (!asBranch || storeId !== '') &&
+    priced.length > 0 &&
+    priced.every((l) => l.valid) &&
+    !duplicated
 
   function setLine(index: number, patch: Partial<Line>) {
     setLines((current) =>
@@ -144,6 +188,33 @@ export function NewRequestDialog({
     setBusy(true)
     setError(null)
 
+    const items = priced.map((line) => ({
+      productId: line.productId,
+      quantity: line.qty,
+    }))
+
+    // The Owner sends online: the request comes back to be sent at once.
+    if (asBranch) {
+      try {
+        const payload = await api<{ request: StockRequest }>('/api/requests', {
+          method: 'POST',
+          body: {
+            branchId: storeId,
+            items,
+            ...(note.trim() ? { notes: note.trim() } : {}),
+          },
+        })
+        onSent?.(payload.request)
+      } catch (caught) {
+        setError(
+          caught instanceof Error ? caught.message : 'Could not send.',
+        )
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
     try {
       // Same reasoning as a sale: a store that has run out should be able to
       // ask for stock whether or not the link is up at that moment.
@@ -153,10 +224,7 @@ export function NewRequestDialog({
         labelKey: 'sync.requestOffline',
         entity: 'requests',
         body: {
-          items: priced.map((line) => ({
-            productId: line.productId,
-            quantity: line.qty,
-          })),
+          items,
           ...(note.trim() ? { notes: note.trim() } : {}),
         },
       })
@@ -188,13 +256,13 @@ export function NewRequestDialog({
         className={styles.panel}
         role="dialog"
         aria-modal="true"
-        aria-label={t('dlg.newRequest')}
+        aria-label={asBranch ? t('req.sendAsBranch') : t('dlg.newRequest')}
         onClick={(event) => event.stopPropagation()}
       >
         <header className={styles.head}>
           <div>
-            <h2>{t('dlg.newRequest')}</h2>
-            <p>{t('dlg.newRequestNote')}</p>
+            <h2>{asBranch ? t('req.sendAsBranch') : t('dlg.newRequest')}</h2>
+            <p>{asBranch ? t('req.sendAsBranchNote') : t('dlg.newRequestNote')}</p>
           </div>
           <button type="button" onClick={onClose} aria-label={t('common.close')}>
             ✕
@@ -202,6 +270,24 @@ export function NewRequestDialog({
         </header>
 
         <form className={styles.body} onSubmit={handleSubmit}>
+          {asBranch ? (
+            <label className={styles.field}>
+              <span>{t('req.sendToStore')}</span>
+              <select
+                value={storeId}
+                onChange={(event) => setStoreId(event.target.value)}
+                required
+              >
+                <option value="">{t('req.chooseStore')}</option>
+                {stores.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
           {priced.map((line, index) => (
             <div key={index} className={styles.saleLine}>
               <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
@@ -317,7 +403,7 @@ export function NewRequestDialog({
               className={styles.submit}
               disabled={!canSubmit}
             >
-              {busy ? t('dlg.sending') : t('dlg.sendRequest')}
+              {busy ? t('dlg.sending') : asBranch ? t('req.nextChooseCar') : t('dlg.sendRequest')}
             </button>
           </div>
         </form>

@@ -14,6 +14,7 @@ const requestDetail = {
   status: true,
   notes: true,
   rejectionReason: true,
+  sentByOwner: true,
   submittedAt: true,
   reviewedAt: true,
   fulfilledAt: true,
@@ -80,22 +81,60 @@ export async function createRequest(
   data: CreateRequestInput,
   viewer: Viewer,
 ) {
-  if (viewer.role !== "SALES") {
-    throw new Error("OWNER_CANNOT_REQUEST");
-  }
+  // The Owner sends "as a branch": the request is filed under a seller of
+  // that store and addressed to the Owner, so it ships and is received exactly
+  // like one the store raised.
+  const asBranch = viewer.role === "OWNER";
 
-  if (!viewer.branchId) {
-    throw new Error("NO_BRANCH");
-  }
+  let requestedById = viewer.userId;
+  let addresseeId: string;
 
-  const addressee = await prisma.user.findFirst({
-    where: { role: "OWNER", isActive: true },
-    select: { id: true },
-    orderBy: { createdAt: "asc" },
-  });
+  if (asBranch) {
+    if (!data.branchId) {
+      throw new Error("BRANCH_REQUIRED");
+    }
 
-  if (!addressee) {
-    throw new Error("NO_ACTIVE_OWNER");
+    const store = await prisma.stockLocation.findUnique({
+      where: { id: data.branchId },
+      select: { isActive: true, isMainStock: true },
+    });
+
+    if (!store || !store.isActive || store.isMainStock) {
+      throw new Error("NOT_A_SELLING_STORE");
+    }
+
+    const seller = await prisma.user.findFirst({
+      where: { role: "SALES", branchId: data.branchId, isActive: true },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (!seller) {
+      throw new Error("NO_SELLER_AT_STORE");
+    }
+
+    requestedById = seller.id;
+    addresseeId = viewer.userId;
+  } else {
+    if (viewer.role !== "SALES") {
+      throw new Error("OWNER_CANNOT_REQUEST");
+    }
+
+    if (!viewer.branchId) {
+      throw new Error("NO_BRANCH");
+    }
+
+    const addressee = await prisma.user.findFirst({
+      where: { role: "OWNER", isActive: true },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (!addressee) {
+      throw new Error("NO_ACTIVE_OWNER");
+    }
+
+    addresseeId = addressee.id;
   }
 
   const productIds = data.items.map((item) => item.productId);
@@ -112,8 +151,9 @@ export async function createRequest(
   return prisma.stockRequest.create({
     data: {
       kind: "RESTOCK",
-      requestedById: viewer.userId,
-      requestedToId: addressee.id,
+      requestedById,
+      requestedToId: addresseeId,
+      sentByOwner: asBranch,
       status: "PENDING",
       notes: data.notes ?? null,
 

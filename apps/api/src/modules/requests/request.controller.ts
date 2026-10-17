@@ -64,6 +64,22 @@ function handleRequestError(
           "The Owner receives restock requests rather than raising them",
       });
 
+    case "BRANCH_REQUIRED":
+      return reply.status(400).send({
+        message: "Choose the store to send to",
+      });
+
+    case "NOT_A_SELLING_STORE":
+      return reply.status(400).send({
+        message: "Choose an open selling store",
+      });
+
+    case "NO_SELLER_AT_STORE":
+      return reply.status(409).send({
+        message:
+          "That store has no active seller to receive the goods. Add one in Users first",
+      });
+
     case "NO_BRANCH":
       return reply.status(400).send({
         message: "You are not assigned to a store",

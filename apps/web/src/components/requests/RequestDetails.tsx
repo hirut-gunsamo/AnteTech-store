@@ -100,7 +100,7 @@ export function RequestDetails({
             </div>
             <div>
               <dt>{t('det.requestedBy')}</dt>
-              <dd>{request.requestedBy.name}</dd>
+              <dd>{request.sentByOwner ? t('req.sentByOwner') : request.requestedBy.name}</dd>
             </div>
             <div>
               <dt>{t('det.branch')}</dt>
