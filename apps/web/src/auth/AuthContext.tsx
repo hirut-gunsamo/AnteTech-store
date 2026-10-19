@@ -15,10 +15,38 @@ import { AuthContext } from './context'
 // the token on every request, so a stale copy cannot widen anyone's access.
 const PROFILE_KEY = 'antetech.profile'
 
+/** Idle time after which the password is asked again. */
+const IDLE_LIMIT_MS = 60 * 60 * 1000
+/** When someone last tapped, clicked or typed; kept across a reload. */
+const ACTIVE_KEY = 'antetech.lastActive'
+
+function markActive() {
+  try {
+    sessionStorage.setItem(ACTIVE_KEY, String(Date.now()))
+  } catch {
+    // Blocked storage: the in-page timer still signs out.
+  }
+}
+
+function idleTooLong() {
+  try {
+    const last = Number(sessionStorage.getItem(ACTIVE_KEY) ?? '0')
+    return last > 0 && Date.now() - last > IDLE_LIMIT_MS
+  } catch {
+    return false
+  }
+}
+
+// Opened again after an hour away (a reload, or a tab left open): sign in
+// again before anything is shown.
+if (idleTooLong()) {
+  setToken(null)
+}
+
 function saveProfile(user: CurrentUser | null) {
   try {
-    if (user) localStorage.setItem(PROFILE_KEY, JSON.stringify(user))
-    else localStorage.removeItem(PROFILE_KEY)
+    if (user) sessionStorage.setItem(PROFILE_KEY, JSON.stringify(user))
+    else sessionStorage.removeItem(PROFILE_KEY)
   } catch {
     // Without storage the app simply cannot open offline.
   }
@@ -26,7 +54,7 @@ function saveProfile(user: CurrentUser | null) {
 
 function savedProfile(): CurrentUser | null {
   try {
-    const raw = localStorage.getItem(PROFILE_KEY)
+    const raw = sessionStorage.getItem(PROFILE_KEY)
     return raw ? (JSON.parse(raw) as CurrentUser) : null
   } catch {
     return null
@@ -108,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       setToken(token)
+      markActive()
       await refresh()
     },
     [refresh],
@@ -118,6 +147,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveProfile(null)
     setUser(null)
   }, [])
+
+  // Signed out after an hour with no taps, clicks or typing, so a device left
+  // open does not stay in someone's account. As on the SIM app.
+  useEffect(() => {
+    if (!user) return
+    markActive()
+    let last = Date.now()
+    const touch = () => {
+      // Written at most once a minute: activity is frequent, storage is not free.
+      if (Date.now() - last > 60_000) markActive()
+      last = Date.now()
+    }
+    const events = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const
+    for (const name of events) window.addEventListener(name, touch, { passive: true })
+    const timer = window.setInterval(() => {
+      if (Date.now() - last > IDLE_LIMIT_MS || idleTooLong()) logout()
+    }, 30_000)
+    return () => {
+      for (const name of events) window.removeEventListener(name, touch)
+      window.clearInterval(timer)
+    }
+  }, [user, logout])
 
   const value = useMemo(
     () => ({ user, loading, login, logout, refresh }),
