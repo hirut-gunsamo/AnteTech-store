@@ -37,6 +37,8 @@ export function NewRequestDialog({
   // As on the SIM app: every product with a box against it, grouped by
   // category. Only the boxes typed into are sent.
   const [grid, setGrid] = useState<Record<string, string>>({})
+  // The list is long: typing narrows it to the matching products.
+  const [search, setSearch] = useState('')
   const [note, setNote] = useState('')
 
   const [busy, setBusy] = useState(false)
@@ -125,7 +127,16 @@ export function NewRequestDialog({
   // A to Z by type and then name inside each.
   const groups = useMemo(() => {
     const byCategory = new Map<string, { name: string; products: CatalogueProduct[] }>()
+    const term = search.trim().toLowerCase()
     for (const product of products) {
+      if (
+        term &&
+        !`${product.name} ${product.sku} ${product.type?.name ?? ''} ${product.type?.parent?.name ?? ''} ${product.productCategory?.name ?? ''}`
+          .toLowerCase()
+          .includes(term)
+      ) {
+        continue
+      }
       const key = product.productCategory?.id ?? product.category
       const name = product.productCategory?.name ?? product.category
       const group = byCategory.get(key) ?? { name, products: [] }
@@ -141,7 +152,7 @@ export function NewRequestDialog({
       )
     }
     return [...byCategory.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name))
-  }, [products])
+  }, [products, search])
 
   const typeLabel = (product: CatalogueProduct) =>
     product.type?.parent?.name ?? product.type?.name ?? ''
@@ -283,7 +294,17 @@ export function NewRequestDialog({
           ) : null}
 
 
+          <input
+            type="search"
+            className={styles.gridSearch}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t('req.searchItems')}
+            aria-label={t('common.search')}
+          />
+
           {products.length === 0 ? <p className={styles.none}>{t('common.loading')}</p> : null}
+          {products.length > 0 && groups.length === 0 ? <p className={styles.none}>{t('common.noMatch')}</p> : null}
 
           {groups.map(([key, group]) => (
             // Each category folds open and shut, so a long list stays short.

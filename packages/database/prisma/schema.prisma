@@ -511,6 +511,14 @@ model Sale {
 
   notes String?
 
+  /// A seller edits their own sale on its day; after that only once the
+  /// Owner allows it, until this moment.
+  editAllowedUntil DateTime?
+  /// The seller asked the Owner to let them correct it (a past day).
+  editRequestedAt  DateTime?
+  /// When it was last corrected, so a changed sale can be told apart.
+  editedAt         DateTime?
+
   saleDate    DateTime  @default(now())
   submittedAt DateTime?
   approvedAt  DateTime?

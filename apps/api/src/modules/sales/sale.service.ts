@@ -17,6 +17,9 @@ const saleDetail = {
   transferReceived: true,
   notes: true,
   saleDate: true,
+  editAllowedUntil: true,
+  editRequestedAt: true,
+  editedAt: true,
   submittedAt: true,
   approvedAt: true,
   createdAt: true,
@@ -73,9 +76,59 @@ export async function createSale(
     throw new Error("NO_BRANCH");
   }
 
+  const { items, serialsByLine, subtotal } = await prepareSale(data, viewer.branchId);
+
+  await assertBranchHasStock(viewer.branchId, data.items);
+
+  const branchId = viewer.branchId;
+
+  return prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.create({
+      data: {
+        salespersonId: viewer.userId,
+        locationId: branchId,
+        status: "APPROVED",
+        // Nobody approved it, so approvedById stays empty; the time is kept
+        // because the reports read it.
+        approvedAt: new Date(),
+        subtotal,
+        totalAmount: subtotal,
+        ...paymentOf(data),
+      },
+      select: { id: true },
+    });
+
+    await writeSaleLines(tx, sale.id, branchId, items, serialsByLine, viewer.userId);
+
+    return tx.sale.findUnique({ where: { id: sale.id }, select: saleDetail });
+  });
+}
+
+// Only cash counts as money the seller holds; transfer is already in the
+// bank, so it is tracked separately.
+function paymentOf(data: CreateSaleInput) {
+  return {
+    paymentMethod: data.paymentMethod,
+    bankName: data.paymentMethod === "CASH" ? null : (data.bankName ?? null),
+    cashReceived: new Prisma.Decimal(data.cashReceived),
+    transferReceived: new Prisma.Decimal(data.transferReceived ?? 0),
+    notes: data.customerNote ?? null,
+  };
+}
+
+/**
+ * Checks a sale before anything is written and prices its lines. When a sale
+ * is being corrected, its own serials do not count as already sold.
+ */
+async function prepareSale(
+  data: CreateSaleInput,
+  branchId: string,
+  editingSaleId?: string,
+) {
+
   // The main store is storage only: nothing is sold from it.
   const store = await prisma.stockLocation.findUnique({
-    where: { id: viewer.branchId },
+    where: { id: branchId },
     select: { isMainStock: true, isActive: true },
   });
 
@@ -142,7 +195,10 @@ export async function createSale(
   // any stock moves.
   if (allSerials.length > 0) {
     const taken = await prisma.inventoryUnit.findFirst({
-      where: { serial: { in: allSerials } },
+      where: {
+        serial: { in: allSerials },
+        ...(editingSaleId ? { NOT: { saleItem: { saleId: editingSaleId } } } : {}),
+      },
       select: { id: true },
     });
 
@@ -150,8 +206,6 @@ export async function createSale(
       throw new Error("SERIAL_ALREADY_SOLD");
     }
   }
-
-  await assertBranchHasStock(viewer.branchId, data.items);
 
   let subtotal = new Prisma.Decimal(0);
 
@@ -179,90 +233,83 @@ export async function createSale(
     };
   });
 
-  const branchId = viewer.branchId;
+  return { items, serialsByLine, subtotal };
+}
 
-  return prisma.$transaction(async (tx) => {
-    const sale = await tx.sale.create({
-      data: {
-        salespersonId: viewer.userId,
-        locationId: branchId,
-        status: "APPROVED",
-        // Nobody approved it, so approvedById stays empty; the time is kept
-        // because the reports read it.
-        approvedAt: new Date(),
-        subtotal,
-        totalAmount: subtotal,
-        // Only cash counts as money the seller holds; transfer is already in
-        // the bank, so it is tracked separately.
-        paymentMethod: data.paymentMethod,
-        bankName:
-          data.paymentMethod === "CASH" ? null : (data.bankName ?? null),
-        cashReceived: new Prisma.Decimal(data.cashReceived),
-        transferReceived: new Prisma.Decimal(data.transferReceived ?? 0),
-        notes: data.customerNote ?? null,
-      },
-      select: { id: true },
+/** Writes a sale's lines, takes them off the shelf and records the serials. */
+async function writeSaleLines(
+  tx: Prisma.TransactionClient,
+  saleId: string,
+  branchId: string,
+  items: {
+    productId: string;
+    quantity: number;
+    unitPrice: Prisma.Decimal;
+    unitCost: Prisma.Decimal | null;
+    lineTotal: Prisma.Decimal;
+  }[],
+  serialsByLine: Map<number, string[]>,
+  userId: string,
+) {
+  const sale = { id: saleId };
+  const viewer = { userId };
+
+  // The lines are written one at a time rather than nested under the sale, so
+  // that each created SaleItem is known to belong to the request line at the
+  // same index. A nested create returns its rows in no guaranteed order, and
+  // the serials have to land on the right line.
+  for (const [index, line] of items.entries()) {
+    const item = await tx.saleItem.create({
+      data: { saleId: sale.id, ...line },
+      select: { id: true, productId: true, quantity: true },
     });
 
-    // The lines are written one at a time rather than nested under the sale, so
-    // that each created SaleItem is known to belong to the request line at the
-    // same index. A nested create returns its rows in no guaranteed order, and
-    // the serials have to land on the right line.
-    for (const [index, line] of items.entries()) {
-      const item = await tx.saleItem.create({
-        data: { saleId: sale.id, ...line },
-        select: { id: true, productId: true, quantity: true },
-      });
+    // Only succeeds while the shelf still holds enough, so two tills
+    // selling the last unit at the same moment cannot both go through.
+    const { count } = await tx.inventoryBalance.updateMany({
+      where: {
+        locationId: branchId,
+        productId: item.productId,
+        quantity: { gte: item.quantity },
+      },
+      data: { quantity: { decrement: item.quantity } },
+    });
 
-      // Only succeeds while the shelf still holds enough, so two tills
-      // selling the last unit at the same moment cannot both go through.
-      const { count } = await tx.inventoryBalance.updateMany({
-        where: {
-          locationId: branchId,
-          productId: item.productId,
-          quantity: { gte: item.quantity },
-        },
-        data: { quantity: { decrement: item.quantity } },
-      });
-
-      if (count === 0) {
-        throw new Error("INSUFFICIENT_STOCK");
-      }
-
-      const serials = serialsByLine.get(index);
-
-      if (serials) {
-        // Each serial becomes the record of one unit leaving the business.
-        // Stock arrives as a plain count, so this is the first and only moment
-        // the business learns which handset this was.
-        for (const serial of serials) {
-          await tx.inventoryUnit.create({
-            data: {
-              productId: item.productId,
-              locationId: branchId,
-              status: "SOLD",
-              saleItemId: item.id,
-              serial,
-            },
-          });
-        }
-      }
-
-      await tx.stockMovement.create({
-        data: {
-          productId: item.productId,
-          fromLocationId: branchId,
-          quantity: item.quantity,
-          type: "SALE",
-          referenceType: "Sale",
-          referenceId: sale.id,
-          createdById: viewer.userId,
-        },
-      });
+    if (count === 0) {
+      throw new Error("INSUFFICIENT_STOCK");
     }
 
-    return tx.sale.findUnique({ where: { id: sale.id }, select: saleDetail });
-  });
+    const serials = serialsByLine.get(index);
+
+    if (serials) {
+      // Each serial becomes the record of one unit leaving the business.
+      // Stock arrives as a plain count, so this is the first and only moment
+      // the business learns which handset this was.
+      for (const serial of serials) {
+        await tx.inventoryUnit.create({
+          data: {
+            productId: item.productId,
+            locationId: branchId,
+            status: "SOLD",
+            saleItemId: item.id,
+            serial,
+          },
+        });
+      }
+    }
+
+    await tx.stockMovement.create({
+      data: {
+        productId: item.productId,
+        fromLocationId: branchId,
+        quantity: item.quantity,
+        type: "SALE",
+        referenceType: "Sale",
+        referenceId: sale.id,
+        createdById: viewer.userId,
+      },
+    });
+  }
 }
 
 async function assertBranchHasStock(
@@ -427,4 +474,150 @@ export async function deleteSale(id: string, viewer: Viewer, restock = true) {
   await prisma.sale.delete({ where: { id } });
 
   return { id };
+}
+
+/** Local YYYY-MM-DD of a moment. */
+function dayOf(date: Date) {
+  return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
+}
+
+/**
+ * A seller corrects their own sale on the day it was made; a past day only
+ * while the Owner has allowed it (until the end of the day they allowed it).
+ */
+export function saleEditable(sale: { saleDate: Date; editAllowedUntil: Date | null }) {
+  if (dayOf(sale.saleDate) === dayOf(new Date())) return true;
+  return sale.editAllowedUntil !== null && sale.editAllowedUntil > new Date();
+}
+
+/**
+ * Corrects a sale: what it took goes back on the shelf, then the corrected
+ * lines are taken off again, all in one go. The sale keeps its day.
+ */
+export async function updateSale(id: string, data: CreateSaleInput, viewer: Viewer) {
+  const sale = await prisma.sale.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      salespersonId: true,
+      locationId: true,
+      saleDate: true,
+      editAllowedUntil: true,
+      items: { select: { id: true, productId: true, quantity: true } },
+    },
+  });
+
+  if (!sale) throw new Error("SALE_NOT_FOUND");
+  if (sale.salespersonId !== viewer.userId) throw new Error("NOT_YOUR_SALE");
+  if (!saleEditable(sale)) throw new Error("EDIT_NOT_ALLOWED");
+
+  const { items, serialsByLine, subtotal } = await prepareSale(data, sale.locationId, sale.id);
+
+  return prisma.$transaction(async (tx) => {
+    // Undo the old sale's effect on the shelf.
+    for (const item of sale.items) {
+      await tx.inventoryBalance.upsert({
+        where: { locationId_productId: { locationId: sale.locationId, productId: item.productId } },
+        update: { quantity: { increment: item.quantity } },
+        create: { productId: item.productId, locationId: sale.locationId, quantity: item.quantity },
+      });
+    }
+    await tx.inventoryUnit.deleteMany({ where: { saleItemId: { in: sale.items.map((item) => item.id) } } });
+    await tx.stockMovement.deleteMany({ where: { referenceType: "Sale", referenceId: sale.id } });
+    await tx.saleItem.deleteMany({ where: { saleId: sale.id } });
+
+    await tx.sale.update({
+      where: { id: sale.id },
+      data: {
+        subtotal,
+        totalAmount: subtotal,
+        ...paymentOf(data),
+        editedAt: new Date(),
+        editRequestedAt: null,
+      },
+    });
+
+    // The corrected lines; refused as a whole if the shelf is short.
+    await writeSaleLines(tx, sale.id, sale.locationId, items, serialsByLine, viewer.userId);
+
+    return tx.sale.findUnique({ where: { id: sale.id }, select: saleDetail });
+  });
+}
+
+/** A seller asks the Owner to let them correct a past day's sale. */
+export async function requestSaleEdit(id: string, viewer: Viewer) {
+  const sale = await prisma.sale.findUnique({
+    where: { id },
+    select: { id: true, salespersonId: true, saleDate: true, editAllowedUntil: true },
+  });
+  if (!sale) throw new Error("SALE_NOT_FOUND");
+  if (sale.salespersonId !== viewer.userId) throw new Error("NOT_YOUR_SALE");
+  if (saleEditable(sale)) return { requested: false };
+  await prisma.sale.update({ where: { id }, data: { editRequestedAt: new Date() } });
+  return { requested: true };
+}
+
+/** Days salespeople have asked the Owner to open, still waiting. */
+export async function listEditRequests() {
+  const rows = await prisma.sale.findMany({
+    where: {
+      editRequestedAt: { not: null },
+      OR: [{ editAllowedUntil: null }, { editAllowedUntil: { lt: new Date() } }],
+    },
+    select: {
+      saleDate: true,
+      editRequestedAt: true,
+      salesperson: { select: { id: true, name: true, branch: { select: { name: true } } } },
+    },
+    orderBy: { editRequestedAt: "desc" },
+    take: 500,
+  });
+
+  const days = new Map<
+    string,
+    { salespersonId: string; name: string; branch: string | null; day: string; sales: number; askedAt: Date }
+  >();
+  for (const row of rows) {
+    const day = dayOf(row.saleDate);
+    const key = `${row.salesperson.id}|${day}`;
+    const entry = days.get(key) ?? {
+      salespersonId: row.salesperson.id,
+      name: row.salesperson.name,
+      branch: row.salesperson.branch?.name ?? null,
+      day,
+      sales: 0,
+      askedAt: row.editRequestedAt!,
+    };
+    entry.sales += 1;
+    days.set(key, entry);
+  }
+  return [...days.values()];
+}
+
+/**
+ * The Owner lets a seller correct one day's sales, for today only: the
+ * permission ends at midnight.
+ */
+export async function allowSaleEdits(data: { salespersonId: string; day: string }) {
+  const start = new Date(`${data.day}T00:00:00`);
+  const end = new Date(`${data.day}T23:59:59.999`);
+  if (Number.isNaN(start.getTime())) throw new Error("INVALID_DAY");
+  const until = new Date();
+  until.setHours(23, 59, 59, 999);
+  const { count } = await prisma.sale.updateMany({
+    where: { salespersonId: data.salespersonId, saleDate: { gte: start, lte: end } },
+    data: { editAllowedUntil: until, editRequestedAt: null },
+  });
+  return { count, until };
+}
+
+/** The Owner turns a request down. */
+export async function declineEditRequest(data: { salespersonId: string; day: string }) {
+  const start = new Date(`${data.day}T00:00:00`);
+  const end = new Date(`${data.day}T23:59:59.999`);
+  if (Number.isNaN(start.getTime())) throw new Error("INVALID_DAY");
+  await prisma.sale.updateMany({
+    where: { salespersonId: data.salespersonId, saleDate: { gte: start, lte: end } },
+    data: { editRequestedAt: null },
+  });
 }
