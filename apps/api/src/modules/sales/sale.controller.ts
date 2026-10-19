@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type {
   FastifyReply,
   FastifyRequest,
@@ -17,6 +18,11 @@ import {
   getSales,
   getSaleById,
   deleteSale,
+  updateSale,
+  requestSaleEdit,
+  listEditRequests,
+  allowSaleEdits,
+  declineEditRequest,
 } from "./sale.service.js";
 
 type SaleParams = {
@@ -53,6 +59,14 @@ function handleSaleError(
   }
 
   switch (error.message) {
+    case "EDIT_NOT_ALLOWED":
+      return reply.status(403).send({
+        message: "This sale is from an earlier day. Ask the Owner to allow the edit first",
+      });
+
+    case "INVALID_DAY":
+      return reply.status(400).send({ message: "Choose a valid day" });
+
     case "NO_BRANCH":
       return reply.status(400).send({
         message: "You are not assigned to a store",
@@ -226,6 +240,75 @@ export async function deleteSaleController(
     return reply.send({
       message: "Sale deleted",
     });
+  } catch (error) {
+    return handleSaleError(error, reply) ?? Promise.reject(error);
+  }
+}
+
+// A seller corrects their own sale: on its day, or once the Owner allowed it.
+export async function updateSaleController(
+  request: FastifyRequest<{ Params: SaleParams }>,
+  reply: FastifyReply,
+) {
+  const result = createSaleSchema.safeParse(request.body);
+
+  if (!result.success) {
+    return reply.status(400).send({
+      message: "Invalid sale data",
+      errors: result.error.flatten(),
+    });
+  }
+
+  const viewer = await withViewer(request, reply);
+  if (!viewer) return reply;
+
+  try {
+    const sale = await updateSale(request.params.id, result.data, viewer);
+    return reply.send({ message: "Sale corrected", sale });
+  } catch (error) {
+    return handleSaleError(error, reply) ?? Promise.reject(error);
+  }
+}
+
+export async function requestSaleEditController(
+  request: FastifyRequest<{ Params: SaleParams }>,
+  reply: FastifyReply,
+) {
+  const viewer = await withViewer(request, reply);
+  if (!viewer) return reply;
+
+  try {
+    return reply.send(await requestSaleEdit(request.params.id, viewer));
+  } catch (error) {
+    return handleSaleError(error, reply) ?? Promise.reject(error);
+  }
+}
+
+export async function listEditRequestsController(_request: FastifyRequest, reply: FastifyReply) {
+  return reply.send({ requests: await listEditRequests() });
+}
+
+const editDaySchema = z.object({
+  salespersonId: z.string().min(1),
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export async function allowSaleEditsController(request: FastifyRequest, reply: FastifyReply) {
+  const result = editDaySchema.safeParse(request.body);
+  if (!result.success) return reply.status(400).send({ message: "Choose the seller and the day" });
+  try {
+    return reply.send(await allowSaleEdits(result.data));
+  } catch (error) {
+    return handleSaleError(error, reply) ?? Promise.reject(error);
+  }
+}
+
+export async function declineEditRequestController(request: FastifyRequest, reply: FastifyReply) {
+  const result = editDaySchema.safeParse(request.body);
+  if (!result.success) return reply.status(400).send({ message: "Choose the seller and the day" });
+  try {
+    await declineEditRequest(result.data);
+    return reply.send({ declined: true });
   } catch (error) {
     return handleSaleError(error, reply) ?? Promise.reject(error);
   }

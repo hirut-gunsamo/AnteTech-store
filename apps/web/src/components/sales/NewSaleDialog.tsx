@@ -5,7 +5,7 @@ import { sendOrQueue } from '../../lib/sync'
 import { BANKS } from '../../lib/banks'
 import { useT, type TranslationKey } from '../../lib/i18n'
 import { count, currency } from '../../lib/format'
-import type { InventorySummary } from '../../lib/types'
+import type { InventorySummary, Sale } from '../../lib/types'
 import styles from '../inventory/Panel.module.css'
 
 // `price` is what one sells for: agreed with the customer, so the seller
@@ -21,6 +21,24 @@ type Line = {
   chargerOn: boolean
   chargerId: string
   chargerPrice: string
+  /** Typed to find a model fast, past the category and type lists. */
+  search: string
+  /** A line given free with another (a phone's charger): 0 is its price. */
+  included: boolean
+}
+
+const EMPTY_LINE: Line = {
+  categoryId: '',
+  typeId: '',
+  productId: '',
+  quantity: '1',
+  price: '',
+  serials: '',
+  chargerOn: false,
+  chargerId: '',
+  chargerPrice: '',
+  search: '',
+  included: false,
 }
 
 // Which kinds the API requires one IMEI / serial per unit for. A counted line
@@ -46,21 +64,35 @@ function parseSerials(raw: string): string[] {
  * of what the server will calculate, not an input to it.
  */
 export function NewSaleDialog({
+  editing,
   onClose,
   onDone,
 }: {
+  /** A sale being corrected: the form opens filled in with it. */
+  editing?: Sale
   onClose: () => void
   onDone: (message: string) => void
 }) {
   const [stock, setStock] = useState<InventorySummary | null>(null)
   const t = useT()
-  const [lines, setLines] = useState<Line[]>([
-    { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '', chargerOn: false, chargerId: '', chargerPrice: '' },
-  ])
-  const [cashReceived, setCashReceived] = useState('')
-  const [transferReceived, setTransferReceived] = useState('')
-  const [method, setMethod] = useState<'CASH' | 'TRANSFER' | 'CASH_AND_TRANSFER'>('CASH')
-  const [bank, setBank] = useState('')
+  const [lines, setLines] = useState<Line[]>(() =>
+    editing
+      ? editing.items.map((item) => ({
+          ...EMPTY_LINE,
+          productId: item.product.id,
+          quantity: String(item.quantity),
+          price: String(Number(item.unitPrice)),
+          serials: item.inventoryUnits.map((unit) => unit.serial).join('\n'),
+          included: Number(item.unitPrice) === 0,
+        }))
+      : [{ ...EMPTY_LINE }],
+  )
+  const [cashReceived, setCashReceived] = useState(editing ? String(Number(editing.cashReceived)) : '')
+  const [transferReceived, setTransferReceived] = useState(
+    editing ? String(Number(editing.transferReceived)) : '',
+  )
+  const [method, setMethod] = useState<'CASH' | 'TRANSFER' | 'CASH_AND_TRANSFER'>(editing?.paymentMethod ?? 'CASH')
+  const [bank, setBank] = useState(editing?.bankName ?? '')
   // Offline, the built-in list still lets a transfer sale be recorded.
   const [banks, setBanks] = useState<string[]>([...BANKS])
   const [newBank, setNewBank] = useState<string | null>(null)
@@ -96,7 +128,7 @@ export function NewSaleDialog({
       setBankBusy(false)
     }
   }
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState(editing?.notes ?? '')
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -184,11 +216,32 @@ export function NewSaleDialog({
         })
     }
 
+    // Correcting a sale: what it took is back on the shelf for this form.
+    for (const item of editing?.items ?? []) {
+      const found = byProduct.get(item.product.id)
+      if (found) found.qty += item.quantity
+      else
+        byProduct.set(item.product.id, {
+          id: item.product.id,
+          name: item.product.name,
+          sku: item.product.sku,
+          category: item.product.category,
+          categoryId: '',
+          categoryName: '—',
+          typeId: '',
+          typeName: '—',
+          typeIds: [],
+          label: item.product.name,
+          price: Number(item.unitPrice),
+          qty: item.quantity,
+        })
+    }
+
     return [...byProduct.values()]
       .filter((entry) => entry.qty > 0)
       // Numbers in order: "A15 64GB" before "A15 128GB".
       .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
-  }, [stock])
+  }, [stock, editing])
 
   // Chargers a phone can go out with: accessories named or typed as a
   // charger, else every accessory in the store.
@@ -204,7 +257,8 @@ export function NewSaleDialog({
     const product = available.find((entry) => entry.id === line.productId)
     const qty = Number(line.quantity)
     const unitPrice = Number(line.price)
-    const priceValid = line.price.trim() !== '' && Number.isFinite(unitPrice) && unitPrice > 0
+    const priceValid =
+      line.price.trim() !== '' && Number.isFinite(unitPrice) && (unitPrice > 0 || (line.included && unitPrice === 0))
     const valid = product != null && Number.isInteger(qty) && qty > 0 && priceValid
 
     // Only serialized goods are handed over as a specific physical unit; a
@@ -329,6 +383,47 @@ export function NewSaleDialog({
     setBusy(true)
     setError(null)
 
+    const body = {
+      items: priced
+        .map((line) => ({
+          productId: line.productId,
+          quantity: line.qty,
+          unitPrice: line.unitPrice,
+          ...(line.included && line.unitPrice === 0 ? { included: true } : {}),
+          ...(line.needsSerials ? { serials: line.serialList } : {}),
+        }))
+        .concat(
+          // The local charger leaves the store with the phone.
+          priced
+            .filter((line) => line.chargerQty > 0)
+            .map((line) => ({
+              productId: line.chargerId,
+              quantity: line.chargerQty,
+              unitPrice: line.chargerPriceValue,
+              // A charger given free goes out at 0.
+              ...(line.chargerPriceValue === 0 ? { included: true } : {}),
+            })),
+        ),
+      cashReceived: method === 'TRANSFER' ? 0 : cashValue,
+      transferReceived: method === 'CASH' ? 0 : transferValue,
+      paymentMethod: method,
+      ...(method !== 'CASH' ? { bankName: bank } : {}),
+      ...(note.trim() ? { customerNote: note.trim() } : {}),
+    }
+
+    // Correcting a sale is done online, straight away.
+    if (editing) {
+      try {
+        await api(`/api/sales/${editing.id}`, { method: 'PUT', body })
+        onDone(t('sale.corrected', { amount: currency(total) }))
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Could not correct the sale.')
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
     try {
       // A shop that loses its connection mid-sale must still be able to
       // serve the customer: the sale is kept on the device and sent when the
@@ -338,30 +433,7 @@ export function NewSaleDialog({
         path: '/api/sales',
         labelKey: 'sync.saleOffline',
         entity: 'sales',
-        body: {
-          items: priced.map((line) => ({
-            productId: line.productId,
-            quantity: line.qty,
-            unitPrice: line.unitPrice,
-            ...(line.needsSerials ? { serials: line.serialList } : {}),
-          })).concat(
-            // The local charger leaves the store with the phone.
-            priced
-              .filter((line) => line.chargerQty > 0)
-              .map((line) => ({
-                productId: line.chargerId,
-                quantity: line.chargerQty,
-                unitPrice: line.chargerPriceValue,
-                // A charger given free goes out at 0.
-                ...(line.chargerPriceValue === 0 ? { included: true } : {}),
-              })),
-          ),
-          cashReceived: method === 'TRANSFER' ? 0 : cashValue,
-          transferReceived: method === 'CASH' ? 0 : transferValue,
-          paymentMethod: method,
-          ...(method !== 'CASH' ? { bankName: bank } : {}),
-          ...(note.trim() ? { customerNote: note.trim() } : {}),
-        },
+        body,
       })
 
       onDone(
@@ -384,13 +456,13 @@ export function NewSaleDialog({
         className={styles.panel}
         role="dialog"
         aria-modal="true"
-        aria-label={t('dlg.newSale')}
+        aria-label={editing ? t('sale.editTitle') : t('dlg.newSale')}
         onClick={(event) => event.stopPropagation()}
       >
         <header className={styles.head}>
           <div>
-            <h2>{t('dlg.newSale')}</h2>
-            <p>{t('dlg.newSaleNote')}</p>
+            <h2>{editing ? t('sale.editTitle') : t('dlg.newSale')}</h2>
+            <p>{editing ? t('sale.editNote') : t('dlg.newSaleNote')}</p>
           </div>
           <button type="button" onClick={onClose} aria-label={t('common.close')}>
             ✕
@@ -403,8 +475,40 @@ export function NewSaleDialog({
           {stock && available.length === 0 ? <p className={styles.warn}>{t('sale.noStock')}</p> : null}
           {priced.map((line, index) => (
             <div key={index} className={styles.saleLine}>
-              {/* Category (Accessories), then type (Speaker), then every model
-                  of it the store has. */}
+              {/* Search finds a model at once; otherwise category (Accessories),
+                  then type (Speaker), then every model of it the store has. */}
+              <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
+                <span>
+                  {t('dlg.item', { n: index + 1 })} · {t('common.search')}
+                </span>
+                <input
+                  type="search"
+                  value={line.search}
+                  onChange={(event) => {
+                    const search = event.target.value
+                    const term = search.trim().toLowerCase()
+                    const hits = term
+                      ? available.filter((entry) =>
+                          `${entry.label} ${entry.typeName} ${entry.sku}`.toLowerCase().includes(term),
+                        )
+                      : []
+                    // One match is picked straight away, with its price.
+                    if (hits.length === 1) {
+                      setLine(index, {
+                        search,
+                        categoryId: '',
+                        typeId: '',
+                        productId: hits[0].id,
+                        price: hits[0].price > 0 ? String(hits[0].price) : '',
+                      })
+                    } else {
+                      setLine(index, { search, categoryId: '', typeId: '' })
+                    }
+                  }}
+                  placeholder={t('sale.searchModel')}
+                />
+              </label>
+
               <label className={styles.field} style={{ gridColumn: '1 / -1' }}>
                 <span>
                   {t('dlg.item', { n: index + 1 })} · {t('prod.category')}
@@ -468,6 +572,14 @@ export function NewSaleDialog({
                   {available
                     .filter((entry) => !line.categoryId || entry.categoryId === line.categoryId)
                     .filter((entry) => !line.typeId || entry.typeIds.includes(line.typeId))
+                    .filter(
+                      (entry) =>
+                        !line.search.trim() ||
+                        entry.id === line.productId ||
+                        `${entry.label} ${entry.typeName} ${entry.sku}`
+                          .toLowerCase()
+                          .includes(line.search.trim().toLowerCase()),
+                    )
                     .map((entry) => (
                     <option key={entry.id} value={entry.id}>
                       {t('sale.modelInStock', { name: entry.label, n: entry.qty })}
@@ -645,7 +757,7 @@ export function NewSaleDialog({
             onClick={() =>
               setLines((current) => [
                 ...current,
-                { categoryId: '', typeId: '', productId: '', quantity: '1', price: '', serials: '', chargerOn: false, chargerId: '', chargerPrice: '' },
+                { ...EMPTY_LINE },
               ])
             }
           >

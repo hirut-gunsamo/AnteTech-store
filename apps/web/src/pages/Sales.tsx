@@ -64,6 +64,21 @@ function isoDay(date: Date) {
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`
 }
 
+type EditRequest = {
+  salespersonId: string
+  name: string
+  branch: string | null
+  day: string
+  sales: number
+  askedAt: string
+}
+
+/** A sale its seller may correct: made today, or opened by the Owner. */
+function saleEditable(sale: Sale) {
+  if (localDay(new Date(sale.saleDate)) === localDay(new Date())) return true
+  return Boolean(sale.editAllowedUntil && new Date(sale.editAllowedUntil) > new Date())
+}
+
 export default function Sales() {
   const { user } = useAuth()
 
@@ -85,6 +100,10 @@ export default function Sales() {
   const [openMenu, setOpenMenu] = useState<string | null>(null)
   const [detailsOf, setDetailsOf] = useState<Sale | null>(null)
   const [creating, setCreating] = useState(false)
+  // A sale being corrected by the seller who made it.
+  const [editing, setEditing] = useState<Sale | null>(null)
+  // Days sellers asked the Owner to open for correction.
+  const [editRequests, setEditRequests] = useState<EditRequest[]>([])
 
   const menuRef = useRef<HTMLDivElement | null>(null)
   const { toasts, push, dismiss } = useToasts()
@@ -233,6 +252,39 @@ export default function Sales() {
   )
 
   const isSales = user?.role === 'SALES'
+
+  // The Owner's waiting edit requests, refreshed with the list.
+  useEffect(() => {
+    if (user?.role !== 'OWNER') return
+    const controller = new AbortController()
+    api<{ requests: EditRequest[] }>('/api/sales/edit-requests', { signal: controller.signal })
+      .then((payload) => setEditRequests(payload.requests ?? []))
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [reloadKey, user?.role])
+
+  async function askToEdit(sale: Sale) {
+    try {
+      await api(`/api/sales/${sale.id}/request-edit`, { method: 'POST', body: {} })
+      push('success', t('sale.askSent'))
+      setReloadKey((n) => n + 1)
+    } catch (caught) {
+      push('error', caught instanceof Error ? caught.message : t('sale.askFailed'))
+    }
+  }
+
+  async function decideEdit(row: EditRequest, allow: boolean) {
+    try {
+      await api(`/api/sales/edit-requests/${allow ? 'allow' : 'decline'}`, {
+        method: 'POST',
+        body: { salespersonId: row.salespersonId, day: row.day },
+      })
+      push('success', t(allow ? 'sale.allowed' : 'sale.declined', { name: row.name }))
+      setReloadKey((n) => n + 1)
+    } catch (caught) {
+      push('error', caught instanceof Error ? caught.message : t('sale.askFailed'))
+    }
+  }
   const isOwner = user?.role === 'OWNER'
 
   // The Owner deletes sales. Asked first whether the items go back on the
@@ -525,6 +577,33 @@ export default function Sales() {
         }}
         onError={(message) => push('error', message)}
       />
+
+      {/* Sellers asking to correct an earlier day's sales: the Owner allows
+          it for today only, or declines. */}
+      {isOwner && editRequests.length > 0 ? (
+        <Card title={t('sale.editRequestsTitle')} subtitle={t('sale.editRequestsNote')}>
+          <ul className={styles.editRequests}>
+            {editRequests.map((row) => (
+              <li key={`${row.salespersonId}|${row.day}`}>
+                <span>
+                  <strong>{row.name}</strong>
+                  <em>
+                    {[row.branch, shortDate(row.day), t('sale.nSales', { n: row.sales })].filter(Boolean).join(' · ')}
+                  </em>
+                </span>
+                <span className={styles.editRequestActions}>
+                  <button type="button" className={styles.primary} onClick={() => void decideEdit(row, true)}>
+                    {t('sale.allowEdit')}
+                  </button>
+                  <button type="button" className={styles.ghost} onClick={() => void decideEdit(row, false)}>
+                    {t('sale.declineEdit')}
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       {/* Each day in one line, as on Reports: this month unless dates are set. */}
       <SalesDaysReport
@@ -820,6 +899,37 @@ export default function Sales() {
                                 >
                                   {t('sales.viewDetails')}
                                 </button>
+                                {/* A seller corrects their own sale on its day; an
+                                    earlier day once the Owner allows it. */}
+                                {isSales && sale.salesperson.id === user?.id ? (
+                                  saleEditable(sale) ? (
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => {
+                                        setEditing(sale)
+                                        setOpenMenu(null)
+                                      }}
+                                    >
+                                      {t('sale.edit')}
+                                    </button>
+                                  ) : sale.editRequestedAt ? (
+                                    <button type="button" role="menuitem" disabled>
+                                      {t('sale.editAsked')}
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => {
+                                        setOpenMenu(null)
+                                        void askToEdit(sale)
+                                      }}
+                                    >
+                                      {t('sale.askEdit')}
+                                    </button>
+                                  )
+                                ) : null}
                                 {isOwner ? (
                                   <button
                                     type="button"
@@ -943,6 +1053,18 @@ export default function Sales() {
         <SaleDetails sale={detailsOf} onClose={() => setDetailsOf(null)} />
       ) : null}
 
+
+      {editing ? (
+        <NewSaleDialog
+          editing={editing}
+          onClose={() => setEditing(null)}
+          onDone={(message) => {
+            setEditing(null)
+            push('success', message)
+            setReloadKey((n) => n + 1)
+          }}
+        />
+      ) : null}
 
       {creating ? (
         <NewSaleDialog

@@ -380,6 +380,12 @@ export type Sale = {
   notes: string | null
   rejectionReason?: string | null
   saleDate: string
+  /** A past day's sale may be corrected until then, once the Owner allows. */
+  editAllowedUntil?: string | null
+  /** The seller asked the Owner to let them correct it. */
+  editRequestedAt?: string | null
+  /** When it was last corrected. */
+  editedAt?: string | null
   submittedAt: string | null
   approvedAt: string | null
   createdAt: string
