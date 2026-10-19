@@ -30,6 +30,7 @@ import type {
   TransferRow,
 } from '../lib/types'
 import styles from './Reports.module.css'
+import { useSavedState } from '../lib/savedState'
 
 const TABS = [
   { value: 'SALES', labelKey: 'rep.tabSales' },
@@ -182,8 +183,8 @@ export default function Reports() {
   const [branch, setBranch] = useState('ALL')
   // This month by default, so the dates show what the page is reporting on
   // instead of sitting blank (which meant "all time").
-  const [from, setFrom] = useState(() => monthStart())
-  const [to, setTo] = useState(() => todayIso())
+  const [from, setFrom] = useSavedState('reports.from', () => monthStart())
+  const [to, setTo] = useSavedState('reports.to', () => todayIso())
 
   // Filters only take effect on Apply: each change would otherwise refetch
   // three reports, and a date range is half-typed most of the time.

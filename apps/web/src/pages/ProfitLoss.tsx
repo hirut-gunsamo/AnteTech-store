@@ -10,6 +10,7 @@ import { useToasts } from '../lib/toasts'
 import type { ProfitReport as Report } from '../lib/types'
 import base from './Products.module.css'
 import styles from './Ledger.module.css'
+import { useSavedState } from '../lib/savedState'
 
 function isoDay(date: Date) {
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`
@@ -26,8 +27,8 @@ export default function ProfitLoss() {
   const branchList = useBranchList()
 
   const now = new Date()
-  const [from, setFrom] = useState(isoDay(new Date(now.getFullYear(), now.getMonth(), 1)))
-  const [to, setTo] = useState(isoDay(now))
+  const [from, setFrom] = useSavedState('profit.from', isoDay(new Date(now.getFullYear(), now.getMonth(), 1)))
+  const [to, setTo] = useSavedState('profit.to', isoDay(now))
   const [branch, setBranch] = useState('')
   const [report, setReport] = useState<Report | null>(null)
 
@@ -176,11 +177,27 @@ export default function ProfitLoss() {
         <div className={styles.filters} style={{ marginBottom: 0 }}>
           <label>
             {t('led.from')}
-            <input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} />
+            <input
+              type="date"
+              value={from}
+              onChange={(event) => {
+                const value = event.target.value
+                setFrom(value)
+                if (value && to && value > to) setTo(value)
+              }}
+            />
           </label>
           <label>
             {t('led.to')}
-            <input type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} />
+            <input
+              type="date"
+              value={to}
+              onChange={(event) => {
+                const value = event.target.value
+                setTo(value)
+                if (value && from && value < from) setFrom(value)
+              }}
+            />
           </label>
           <select value={branch} onChange={(event) => setBranch(event.target.value)} aria-label={t('common.branch')}>
             <option value="">{t('inv.allBranches')}</option>

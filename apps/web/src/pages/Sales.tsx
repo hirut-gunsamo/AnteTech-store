@@ -25,6 +25,7 @@ import { useToasts } from '../lib/toasts'
 import type { Sale } from '../lib/types'
 import styles from './Sales.module.css'
 import panel from '../components/inventory/Panel.module.css'
+import { useSavedState } from '../lib/savedState'
 
 const TABS = [
   { value: 'ALL', labelKey: 'sales.tabAll' },
@@ -75,8 +76,9 @@ export default function Sales() {
   const [branch, setBranch] = useState('ALL')
   const [employee, setEmployee] = useState('ALL')
   const [category, setCategory] = useState('ALL')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  // The dates picked stay picked when the page is left and come back to.
+  const [from, setFrom] = useSavedState('sales.from', '')
+  const [to, setTo] = useSavedState('sales.to', '')
   const [page, setPage] = useState(1)
 
   const [selected, setSelected] = useState<Set<string>>(new Set())

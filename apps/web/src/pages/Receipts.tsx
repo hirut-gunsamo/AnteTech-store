@@ -23,6 +23,7 @@ import { usePageSize } from '../lib/prefs'
 import { useToasts } from '../lib/toasts'
 import type { BankReceipt } from '../lib/types'
 import styles from './Receipts.module.css'
+import { useSavedState } from '../lib/savedState'
 
 const TABS = [
   { value: 'ALL', labelKey: 'rcpt.tabAll' },
@@ -68,8 +69,8 @@ export default function Receipts() {
   const [search, setSearch] = useState('')
   const [branch, setBranch] = useState('ALL')
   const [status, setStatus] = useState('ALL')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  const [from, setFrom] = useSavedState('receipts.from', '')
+  const [to, setTo] = useSavedState('receipts.to', '')
   const [page, setPage] = useState(1)
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
