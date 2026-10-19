@@ -15,6 +15,7 @@ import type { ExpenseReport } from '../lib/types'
 import panel from '../components/inventory/Panel.module.css'
 import base from './Products.module.css'
 import styles from './Ledger.module.css'
+import { useSavedState } from '../lib/savedState'
 
 function isoDay(date: Date) {
   return `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`
@@ -183,7 +184,7 @@ function AddExpenseDialog({
             <span>
               {t('req.date')}<em>{t('common.required')}</em>
             </span>
-            <input type="date" value={date} max={isoDay(new Date())} onChange={(event) => setDate(event.target.value)} required />
+            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
           </label>
 
           <label className={panel.field}>
@@ -222,8 +223,8 @@ export default function Expenses() {
   const branchList = useBranchList()
 
   const now = new Date()
-  const [from, setFrom] = useState(isoDay(new Date(now.getFullYear(), now.getMonth(), 1)))
-  const [to, setTo] = useState(isoDay(now))
+  const [from, setFrom] = useSavedState('expenses.from', isoDay(new Date(now.getFullYear(), now.getMonth(), 1)))
+  const [to, setTo] = useSavedState('expenses.to', isoDay(now))
   const [branch, setBranch] = useState('')
   const [data, setData] = useState<ExpenseReport | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
@@ -319,11 +320,27 @@ export default function Expenses() {
           <SearchBox value={search} onChange={setSearch} placeholder={t('exp.searchPlaceholder')} />
           <label>
             {t('led.from')}
-            <input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} />
+            <input
+              type="date"
+              value={from}
+              onChange={(event) => {
+                const value = event.target.value
+                setFrom(value)
+                if (value && to && value > to) setTo(value)
+              }}
+            />
           </label>
           <label>
             {t('led.to')}
-            <input type="date" value={to} min={from} onChange={(event) => setTo(event.target.value)} />
+            <input
+              type="date"
+              value={to}
+              onChange={(event) => {
+                const value = event.target.value
+                setTo(value)
+                if (value && from && value < from) setFrom(value)
+              }}
+            />
           </label>
           {isOwner ? (
             <select value={branch} onChange={(event) => setBranch(event.target.value)} aria-label={t('common.branch')}>

@@ -33,6 +33,7 @@ import type {
   StockRequest,
 } from '../lib/types'
 import styles from './Approvals.module.css'
+import { useSavedState } from '../lib/savedState'
 
 const TABS: {
   value: ApprovalKind
@@ -98,8 +99,8 @@ export default function Approvals() {
   const [search, setSearch] = useState('')
   const [branch, setBranch] = useState('ALL')
   const [status, setStatus] = useState('PENDING')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  const [from, setFrom] = useSavedState('approvals.from', '')
+  const [to, setTo] = useSavedState('approvals.to', '')
   const [page, setPage] = useState(1)
 
   const [pending, setPending] = useState<string | null>(null)

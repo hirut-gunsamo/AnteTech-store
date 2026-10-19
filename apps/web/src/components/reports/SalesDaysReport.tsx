@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Card, Empty } from '../Card'
 import { useAuth } from '../../auth/context'
@@ -10,6 +10,7 @@ import { groupByDay, type SalesDay } from '../../lib/salesDays'
 import type { Deduction, ExpenseReport, Sale } from '../../lib/types'
 import styles from './SalesDays.module.css'
 import panel from '../inventory/Panel.module.css'
+import { useSavedState } from '../../lib/savedState'
 
 /** Every month from one day to another, as YYYY-MM, for the deductions API. */
 function monthsBetween(from: string, to: string) {
@@ -51,17 +52,32 @@ export function SalesDaysReport({
 
   // As on the SIM app: the table's own day (today first; cleared, the whole
   // period shows) and, for the Owner, its own store, taken on Apply.
-  const [tableDay, setTableDay] = useState(() => {
+  const [tableDay, setTableDay] = useSavedState('salesDays.day', () => {
     const now = new Date()
     return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}-${`${now.getDate()}`.padStart(2, '0')}`
   })
   const [storeDraft, setStoreDraft] = useState(pageBranch)
-  const [tableStore, setTableStore] = useState(pageBranch)
+  const [tableStore, setTableStore] = useSavedState('salesDays.store', pageBranch)
 
+  // Dates picked at the top of the page win: the table shows that range
+  // instead of staying on one day. Skipped on first load, so a kept day stays.
+  const lastDates = useRef(`${pageFrom}|${pageTo}`)
   useEffect(() => {
+    const now = `${pageFrom}|${pageTo}`
+    if (lastDates.current === now) return
+    lastDates.current = now
+    setTableDay('')
+  }, [pageFrom, pageTo, setTableDay])
+
+  // The page's store, when changed there, is the table's too.
+  const lastBranch = useRef(pageBranch)
+  useEffect(() => {
+    if (lastBranch.current === pageBranch) return
+    lastBranch.current = pageBranch
     setStoreDraft(pageBranch)
     setTableStore(pageBranch)
-  }, [pageBranch])
+  }, [pageBranch, setTableStore])
+  useEffect(() => setStoreDraft(tableStore), [tableStore])
 
   const from = tableDay || pageFrom
   const to = tableDay || pageTo

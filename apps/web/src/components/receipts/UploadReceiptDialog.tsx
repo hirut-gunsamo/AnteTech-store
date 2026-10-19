@@ -243,7 +243,6 @@ export function UploadReceiptDialog({
               type="date"
               value={receiptDate}
               onChange={(event) => setReceiptDate(event.target.value)}
-              max={isoDay(new Date())}
               required
             />
           </label>
