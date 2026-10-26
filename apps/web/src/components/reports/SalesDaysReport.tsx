@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Card, Empty } from '../Card'
 import { useAuth } from '../../auth/context'
@@ -125,7 +125,44 @@ export function SalesDaysReport({
   }, [from, to, branch, reload])
 
   const days = useMemo(() => (sales ? groupByDay(sales, deductions, expenses) : []), [sales, deductions, expenses])
-  const openDay = days.find((day) => day.key === open) ?? null
+
+  // As on the SIM app: dates chosen across more than one day show each
+  // seller's total for the whole period, not a line per day; then each
+  // store's total and the grand total.
+  const isRange = from !== to
+  const periodLabel = isRange
+    ? `${shortDate(`${from}T12:00:00`)} – ${shortDate(`${to}T12:00:00`)}`
+    : shortDate(`${from}T12:00:00`)
+
+  const rows = useMemo(() => {
+    if (!isRange) return days
+    const byPerson = new Map<string, SalesDay>()
+    for (const day of days) {
+      const key = `period|${day.salesperson.id}`
+      byPerson.set(key, addDays(byPerson.get(key), day, key))
+    }
+    return [...byPerson.values()].sort(
+      (a, b) => a.store.localeCompare(b.store) || a.salesperson.name.localeCompare(b.salesperson.name),
+    )
+  }, [days, isRange])
+
+  // Each store's own total line, after its sellers.
+  const storeGroups = useMemo(() => {
+    const groups = new Map<string, SalesDay[]>()
+    for (const row of rows) groups.set(row.store, [...(groups.get(row.store) ?? []), row])
+    return [...groups.entries()].map(([store, list]) => ({
+      store,
+      list,
+      total: list.reduce<SalesDay | undefined>((acc, row) => addDays(acc, row, `store|${store}`), undefined)!,
+    }))
+  }, [rows])
+
+  const grandTotal = useMemo(
+    () => rows.reduce<SalesDay | undefined>((acc, row) => addDays(acc, row, 'total'), undefined),
+    [rows],
+  )
+
+  const openDay = rows.find((day) => day.key === open) ?? null
   const sum = useMemo(
     () =>
       days.reduce(
@@ -157,6 +194,19 @@ export function SalesDaysReport({
     <td data-label={label} className={`${className} tabular`} data-zero={amount === 0 ? '' : undefined}>
       <strong>{currency(amount)}</strong>
     </td>
+  )
+
+  const figureCells = (day: SalesDay) => (
+    <>
+      {goods(t('ds.phones'), day.phones.quantity, day.phones.amount, true)}
+      {goods(t('ds.accessories'), day.accessories.quantity, day.accessories.amount)}
+      {money(t('ds.dayTotal'), day.total, `${styles.total} ${styles.groupStart}`)}
+      {money(t('ds.transfer'), day.transfer)}
+      {money(t('ds.cash'), day.cash)}
+      {money(t('ds.deductions'), day.deductions, `${styles.minus} ${styles.groupStart}`)}
+      {money(t('ds.expenses'), day.expenses, styles.minus)}
+      {money(t('ds.net'), day.net, `${styles.net} ${styles.groupStart}`)}
+    </>
   )
 
   return (
@@ -235,46 +285,76 @@ export function SalesDaysReport({
               </tr>
             </thead>
             <tbody>
-              {days.map((day) => (
-                <tr
-                  key={day.key}
-                  className={styles.clickable}
-                  tabIndex={0}
-                  aria-haspopup="dialog"
-                  data-open={open === day.key ? '' : undefined}
-                  onClick={() => setOpen(day.key)}
-                  onKeyDown={(event) => event.key === 'Enter' && setOpen(day.key)}
-                >
-                  <td data-label={t('req.date')} className={styles.when}>
-                    {shortDate(`${day.date}T12:00:00`)}
-                  </td>
-                  <td data-label={t('sales.employee')} className={styles.who}>
-                    <strong>{day.salesperson.name}</strong>
-                    <em>{day.store}</em>
-                  </td>
-                  {goods(t('ds.phones'), day.phones.quantity, day.phones.amount, true)}
-                  {goods(t('ds.accessories'), day.accessories.quantity, day.accessories.amount)}
-                  {money(t('ds.dayTotal'), day.total, `${styles.total} ${styles.groupStart}`)}
-                  {money(t('ds.transfer'), day.transfer)}
-                  {money(t('ds.cash'), day.cash)}
-                  {money(t('ds.deductions'), day.deductions, `${styles.minus} ${styles.groupStart}`)}
-                  {money(t('ds.expenses'), day.expenses, styles.minus)}
-                  {money(t('ds.net'), day.net, `${styles.net} ${styles.groupStart}`)}
-                </tr>
+              {storeGroups.map((group) => (
+                <Fragment key={group.store}>
+                  {group.list.map((day) => (
+                    <tr
+                      key={day.key}
+                      className={styles.clickable}
+                      tabIndex={0}
+                      aria-haspopup="dialog"
+                      data-open={open === day.key ? '' : undefined}
+                      onClick={() => setOpen(day.key)}
+                      onKeyDown={(event) => event.key === 'Enter' && setOpen(day.key)}
+                    >
+                      <td data-label={t('req.date')} className={styles.when}>
+                        {isRange ? periodLabel : shortDate(`${day.date}T12:00:00`)}
+                      </td>
+                      <td data-label={t('sales.employee')} className={styles.who}>
+                        <strong>{day.salesperson.name}</strong>
+                        <em>{day.store}</em>
+                      </td>
+                      {figureCells(day)}
+                    </tr>
+                  ))}
+
+                  {/* The store's total, when more than one store is shown. */}
+                  {isOwner && storeGroups.length > 1 ? (
+                    <tr className={styles.totalRow}>
+                      <td data-label={t('req.date')} className={styles.when}>
+                        {periodLabel}
+                      </td>
+                      <td data-label={t('sales.employee')} className={styles.who}>
+                        <strong>{t('ds.storeTotal')}</strong>
+                        <em>{group.store}</em>
+                      </td>
+                      {figureCells(group.total)}
+                    </tr>
+                  ) : null}
+                </Fragment>
               ))}
             </tbody>
+            {grandTotal ? (
+              <tfoot>
+                <tr className={styles.grandRow}>
+                  <td data-label={t('req.date')} className={styles.when}>
+                    {periodLabel}
+                  </td>
+                  <td data-label={t('sales.employee')} className={styles.who}>
+                    <strong>{t('ds.grandTotal')}</strong>
+                  </td>
+                  {figureCells(grandTotal)}
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         </div>
       )}
 
       {/* Tapping a day opens it on the right, as the SIM app does. */}
-      {openDay ? <DayDetails day={openDay} onClose={() => setOpen(null)} /> : null}
+      {openDay ? (
+        <DayDetails
+          day={openDay}
+          when={isRange ? periodLabel : shortDate(`${openDay.date}T12:00:00`)}
+          onClose={() => setOpen(null)}
+        />
+      ) : null}
     </Card>
   )
 }
 
 /** One seller's day on the right: the money first, then what was sold. */
-function DayDetails({ day, onClose }: { day: SalesDay; onClose: () => void }) {
+function DayDetails({ day, when, onClose }: { day: SalesDay; when: string; onClose: () => void }) {
   const t = useT()
 
   useEffect(() => {
@@ -306,7 +386,7 @@ function DayDetails({ day, onClose }: { day: SalesDay; onClose: () => void }) {
           <div>
             <h2>{day.salesperson.name}</h2>
             <p>
-              {shortDate(`${day.date}T12:00:00`)} · {day.store}
+              {when} · {day.store}
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label={t('common.close')}>
@@ -362,4 +442,46 @@ function DayDetails({ day, onClose }: { day: SalesDay; onClose: () => void }) {
       </aside>
     </div>
   )
+}
+
+/** Two lines added together: a seller's days into a period, or a store's. */
+function addDays(into: SalesDay | undefined, day: SalesDay, key: string): SalesDay {
+  const base: SalesDay = into ?? {
+    key,
+    date: day.date,
+    salesperson: day.salesperson,
+    store: day.store,
+    phones: { quantity: 0, amount: 0 },
+    accessories: { quantity: 0, amount: 0 },
+    total: 0,
+    transfer: 0,
+    cash: 0,
+    deductions: 0,
+    expenses: 0,
+    net: 0,
+    items: [],
+  }
+  const items = [...base.items]
+  for (const item of day.items) {
+    const found = items.find((entry) => entry.name === item.name)
+    if (found) {
+      found.quantity += item.quantity
+      found.amount += item.amount
+    } else items.push({ ...item })
+  }
+  return {
+    ...base,
+    phones: { quantity: base.phones.quantity + day.phones.quantity, amount: base.phones.amount + day.phones.amount },
+    accessories: {
+      quantity: base.accessories.quantity + day.accessories.quantity,
+      amount: base.accessories.amount + day.accessories.amount,
+    },
+    total: base.total + day.total,
+    transfer: base.transfer + day.transfer,
+    cash: base.cash + day.cash,
+    deductions: base.deductions + day.deductions,
+    expenses: base.expenses + day.expenses,
+    net: base.net + day.net,
+    items: items.map((item) => ({ ...item })),
+  }
 }

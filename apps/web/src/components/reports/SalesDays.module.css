@@ -103,6 +103,7 @@
 
   .table,
   .table tbody,
+  .table tfoot,
   .table tr,
   .table td {
     display: block;
@@ -114,7 +115,8 @@
 
   /* Name and date on top, what was sold in a row of small figures, then
      the money: total, how it came in, what was taken off and what is left. */
-  .table tbody tr {
+  .table tbody tr,
+  .table tfoot tr {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
@@ -316,5 +318,36 @@
   .apply {
     width: 100%;
     min-width: 0;
+  }
+}
+
+/* A store's total, and the grand total: tinted like the SIM app's. */
+.totalRow td {
+  background: color-mix(in srgb, var(--brand) 7%, var(--surface));
+  border-top: 1px solid color-mix(in srgb, var(--brand) 30%, var(--border));
+}
+
+.grandRow td {
+  background: color-mix(in srgb, var(--brand) 13%, var(--surface));
+  border-top: 2px solid var(--brand);
+  font-weight: 700;
+}
+
+.totalRow strong,
+.grandRow strong {
+  color: var(--text);
+}
+
+@media (max-width: 720px) {
+  /* On a phone the total cards are tinted as a whole. */
+  .totalRow,
+  .grandRow {
+    background: color-mix(in srgb, var(--brand) 9%, var(--surface)) !important;
+    border-color: color-mix(in srgb, var(--brand) 40%, var(--border)) !important;
+  }
+
+  .totalRow td,
+  .grandRow td {
+    background: none;
   }
 }
