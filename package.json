@@ -10,7 +10,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Hirut Gunsamo",
   "license": "ISC",
   "devEngines": {
     "packageManager": {

@@ -19,7 +19,7 @@
     "postinstall": "prisma generate && (prisma skills sync || exit 0)"
   },
   "keywords": [],
-  "author": "",
+  "author": "Hirut Gunsamo",
   "license": "ISC",
   "type": "module",
   "devDependencies": {

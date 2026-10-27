@@ -17,6 +17,5 @@ packages/database/src/generated/
 
 # Prisma's editor-assistant skill files, recreated by `pnpm install`
 packages/database/.agents/
-packages/database/.claude/
 packages/database/.cursor/
 packages/database/.devin/

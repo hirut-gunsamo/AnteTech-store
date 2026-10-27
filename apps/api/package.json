@@ -11,7 +11,7 @@
     "isolation": "node scripts/isolation.mjs"
   },
   "keywords": [],
-  "author": "",
+  "author": "Hirut Gunsamo",
   "license": "ISC",
   "type": "module",
   "dependencies": {
